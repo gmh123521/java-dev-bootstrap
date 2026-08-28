@@ -10,6 +10,7 @@ Java Dev Bootstrap 是一个面向 Windows 和 macOS 的 Java 开发环境初始
 - Docker Desktop
 - Windows 使用 winget，macOS 使用 Homebrew
 - 支持 `list`、`plan`、`install`、`doctor`
+- 支持 `--dry-run` 预览执行、安装超时和中文日志
 - 默认内置清单，也可以通过 `--manifest` 使用自定义清单
 
 ## 使用
@@ -19,16 +20,21 @@ jdb list
 jdb plan
 jdb install
 jdb install --yes
+jdb install --dry-run
+jdb install --log 安装日志.txt
 jdb doctor
 ```
 
 `install` 默认会先检测已安装软件，再显示计划并要求输入 `yes`。`--yes` 只适合用户已经审阅清单后的自动化场景。
+
+`--dry-run` 只生成安装计划，不检查或安装软件；`--log` 可指定安装日志文件，默认写入当前目录的 `jdb.log`。安装流程默认最多运行 30 分钟，超时后会终止后续命令并输出失败结果。
 
 ## 前置条件
 
 - Windows 10/11：需要可用的 Windows Package Manager（winget）。
 - macOS：需要可用的 Homebrew。
 - 安装软件时可能需要系统管理员权限、网络连接和包管理器自身的协议确认。
+- `doctor` 会实际执行包管理器版本检查；如果提示 winget 或 Homebrew 不可用，应先修复包管理器再运行安装。
 
 ## 安全边界
 

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/gmh123521/java-dev-bootstrap/internal/model"
 	platformexec "github.com/gmh123521/java-dev-bootstrap/internal/platform"
@@ -15,8 +16,23 @@ type PlanItem struct {
 	Skipped bool
 }
 
+type InstallReport struct {
+	Succeeded int
+	Skipped   int
+	Failed    int
+	Errors    []error
+}
+
 type Bootstrap struct {
-	Runner ports.Runner
+	Runner  ports.Runner
+	Timeout time.Duration
+}
+
+func (b Bootstrap) commandContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	if b.Timeout <= 0 {
+		return context.WithCancel(ctx)
+	}
+	return context.WithTimeout(ctx, b.Timeout)
 }
 
 func (b Bootstrap) Plan(ctx context.Context, manifest model.Manifest, platform model.Platform) ([]PlanItem, error) {
@@ -36,8 +52,14 @@ func (b Bootstrap) Plan(ctx context.Context, manifest model.Manifest, platform m
 			if checkErr != nil {
 				return nil, checkErr
 			}
-			result := b.Runner.Run(ctx, check)
-			item.Skipped = result.Err == nil
+			checkCtx, cancel := b.commandContext(ctx)
+			result := b.Runner.Run(checkCtx, check)
+			cancel()
+			if result.Err == nil {
+				item.Skipped = true
+			} else if result.Output == "" {
+				return nil, fmt.Errorf("检查 %s 安装状态失败: %w", pkg.Name, result.Err)
+			}
 		}
 		items = append(items, item)
 	}
@@ -45,17 +67,39 @@ func (b Bootstrap) Plan(ctx context.Context, manifest model.Manifest, platform m
 }
 
 func (b Bootstrap) Install(ctx context.Context, items []PlanItem) error {
+	report := b.InstallReport(ctx, items)
+	if report.Failed > 0 {
+		return report.Errors[0]
+	}
+	return nil
+}
+
+func (b Bootstrap) InstallReport(ctx context.Context, items []PlanItem) InstallReport {
+	report := InstallReport{}
 	for _, item := range items {
+		if err := ctx.Err(); err != nil {
+			report.Failed++
+			report.Errors = append(report.Errors, fmt.Errorf("安装已取消或超时: %w", err))
+			break
+		}
 		if item.Skipped {
+			report.Skipped++
 			continue
 		}
 		if b.Runner == nil {
-			return fmt.Errorf("未配置命令执行器")
+			report.Failed++
+			report.Errors = append(report.Errors, fmt.Errorf("未配置命令执行器"))
+			continue
 		}
-		result := b.Runner.Run(ctx, item.Command)
+		commandCtx, cancel := b.commandContext(ctx)
+		result := b.Runner.Run(commandCtx, item.Command)
+		cancel()
 		if result.Err != nil {
-			return fmt.Errorf("安装 %s 失败: %w\n%s", item.Package.Name, result.Err, result.Output)
+			report.Failed++
+			report.Errors = append(report.Errors, fmt.Errorf("安装 %s 失败: %w\n%s", item.Package.Name, result.Err, result.Output))
+			continue
 		}
+		report.Succeeded++
 	}
-	return nil
+	return report
 }

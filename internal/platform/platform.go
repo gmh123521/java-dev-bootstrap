@@ -32,33 +32,70 @@ func ManagerFor(platform model.Platform) (string, error) {
 	}
 }
 
-func InstallCommand(platform model.Platform, pkg model.Package) (ports.Command, error) {
-	if pkg.Manager == "" || pkg.ManagerID == "" {
-		return ports.Command{}, fmt.Errorf("软件包 %q 缺少安装器信息", pkg.ID)
+func ManagerCheckCommand(platform model.Platform) (ports.Command, error) {
+	manager, err := ManagerFor(platform)
+	if err != nil {
+		return ports.Command{}, err
 	}
-	switch platform {
-	case model.PlatformWindows:
-		return ports.Command{Program: "winget", Args: []string{"install", "--exact", "--id", pkg.ManagerIDFor(platform), "--accept-source-agreements", "--accept-package-agreements"}}, nil
-	case model.PlatformDarwin:
+	return ports.Command{Program: manager, Args: []string{"--version"}}, nil
+}
+
+func InstallCommand(platform model.Platform, pkg model.Package) (ports.Command, error) {
+	manager, managerID, err := packageManager(platform, pkg)
+	if err != nil {
+		return ports.Command{}, err
+	}
+	switch manager {
+	case "winget":
+		return ports.Command{Program: "winget", Args: []string{"install", "--exact", "--id", managerID, "--accept-source-agreements", "--accept-package-agreements"}}, nil
+	case "brew":
 		if pkg.Kind == "formula" {
-			return ports.Command{Program: "brew", Args: []string{"install", pkg.ManagerIDFor(platform)}}, nil
+			return ports.Command{Program: "brew", Args: []string{"install", managerID}}, nil
 		}
-		return ports.Command{Program: "brew", Args: []string{"install", "--cask", pkg.ManagerIDFor(platform)}}, nil
+		return ports.Command{Program: "brew", Args: []string{"install", "--cask", managerID}}, nil
 	default:
-		return ports.Command{}, fmt.Errorf("暂不支持平台: %s", platform)
+		return ports.Command{}, fmt.Errorf("软件包 %q 使用了不支持的安装器: %s", pkg.ID, manager)
 	}
 }
 
-func CheckCommand(platform model.Platform, pkg model.Package) (ports.Command, error) {
-	switch platform {
-	case model.PlatformWindows:
-		return ports.Command{Program: "winget", Args: []string{"list", "--exact", "--id", pkg.ManagerIDFor(platform)}}, nil
-	case model.PlatformDarwin:
-		if pkg.Kind == "formula" {
-			return ports.Command{Program: "brew", Args: []string{"list", "--formula", pkg.ManagerIDFor(platform)}}, nil
+func packageManager(platform model.Platform, pkg model.Package) (string, string, error) {
+	manager := strings.ToLower(strings.TrimSpace(pkg.Manager))
+	managerID := strings.TrimSpace(pkg.ManagerIDFor(platform))
+	if platform == model.PlatformDarwin {
+		if strings.TrimSpace(pkg.DarwinID) == "" {
+			return "", "", fmt.Errorf("软件包 %q 缺少 macOS 安装器 ID", pkg.ID)
 		}
-		return ports.Command{Program: "brew", Args: []string{"list", "--cask", pkg.ManagerIDFor(platform)}}, nil
+		if manager != "" && manager != "brew" && manager != "winget" {
+			return "", "", fmt.Errorf("软件包 %q 的 macOS 安装器不受支持: %s", pkg.ID, manager)
+		}
+		manager = "brew"
+	}
+	if platform == model.PlatformWindows && manager != "winget" {
+		return "", "", fmt.Errorf("软件包 %q 的 Windows 安装器必须是 winget", pkg.ID)
+	}
+	if manager == "" || managerID == "" {
+		return "", "", fmt.Errorf("软件包 %q 缺少当前平台的安装器或安装器 ID", pkg.ID)
+	}
+	if manager == "brew" && pkg.Kind != "formula" && pkg.Kind != "cask" {
+		return "", "", fmt.Errorf("软件包 %q 的 Homebrew 类型必须是 formula 或 cask", pkg.ID)
+	}
+	return manager, managerID, nil
+}
+
+func CheckCommand(platform model.Platform, pkg model.Package) (ports.Command, error) {
+	manager, managerID, err := packageManager(platform, pkg)
+	if err != nil {
+		return ports.Command{}, err
+	}
+	switch manager {
+	case "winget":
+		return ports.Command{Program: "winget", Args: []string{"list", "--exact", "--id", managerID}}, nil
+	case "brew":
+		if pkg.Kind == "formula" {
+			return ports.Command{Program: "brew", Args: []string{"list", "--formula", managerID}}, nil
+		}
+		return ports.Command{Program: "brew", Args: []string{"list", "--cask", managerID}}, nil
 	default:
-		return ports.Command{}, fmt.Errorf("暂不支持平台: %s", platform)
+		return ports.Command{}, fmt.Errorf("软件包 %q 使用了不支持的安装器: %s", pkg.ID, manager)
 	}
 }
