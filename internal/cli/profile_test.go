@@ -15,3 +15,13 @@ func TestRunProfilesListsBuiltInProfiles(t *testing.T) {
 		t.Fatalf("profile 列表不完整: %s", output.String())
 	}
 }
+
+func TestRunVersionPrintsVersion(t *testing.T) {
+	var output strings.Builder
+	if err := Run(context.Background(), []string{"version"}, &output, &output); err != nil {
+		t.Fatalf("version 命令失败: %v", err)
+	}
+	if !strings.Contains(output.String(), "版本") {
+		t.Fatalf("版本输出不完整: %s", output.String())
+	}
+}

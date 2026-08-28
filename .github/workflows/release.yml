@@ -1,0 +1,40 @@
+name: 发布跨平台二进制
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: 构建并发布
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+      - name: 安装 Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+      - name: 运行测试
+        run: go test ./...
+      - name: 构建跨平台程序
+        shell: bash
+        run: |
+          mkdir -p dist
+          for target in windows-amd64 windows-arm64 darwin-amd64 darwin-arm64; do
+            os=${target%-*}
+            arch=${target#*-}
+            suffix=""
+            [ "$os" = "windows" ] && suffix=".exe"
+            GOOS="$os" GOARCH="$arch" go build -buildvcs=false -ldflags "-X github.com/gmh123521/java-dev-bootstrap/internal/version.Value=${GITHUB_REF_NAME}" -o "dist/jdb-${target}${suffix}" ./cmd/jdb
+          done
+          sha256sum dist/* > dist/SHA256SUMS.txt
+      - name: 创建 GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true

@@ -14,6 +14,7 @@ import (
 	"github.com/gmh123521/java-dev-bootstrap/internal/platform"
 	"github.com/gmh123521/java-dev-bootstrap/internal/ports"
 	"github.com/gmh123521/java-dev-bootstrap/internal/service"
+	"github.com/gmh123521/java-dev-bootstrap/internal/version"
 )
 
 const DefaultManifest = "configs/default.yaml"
@@ -80,6 +81,9 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		return err
 	}
 	switch command {
+	case "version":
+		fmt.Fprintf(out, "版本：%s\n", version.Display())
+		return nil
 	case "profiles":
 		for _, name := range service.ProfileNames() {
 			fmt.Fprintln(out, "-", name)
@@ -183,5 +187,5 @@ func help(out io.Writer) error {
 }
 
 func helpText() string {
-	return "Java Dev Bootstrap\n\n用法：jdb <list|profiles|plan|install|doctor> [--manifest 路径] [--profile 名称] [--yes] [--dry-run] [--log 路径]\n"
+	return "Java Dev Bootstrap\n\n用法：jdb <version|list|profiles|plan|install|doctor> [--manifest 路径] [--profile 名称] [--yes] [--dry-run] [--log 路径]\n"
 }

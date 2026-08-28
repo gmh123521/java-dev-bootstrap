@@ -18,6 +18,7 @@ Java Dev Bootstrap 是一个面向 Windows 和 macOS 的 Java 开发环境初始
 
 ```text
 jdb list
+jdb version
 jdb profiles
 jdb list --profile java-basic
 jdb plan
@@ -34,6 +35,10 @@ jdb doctor
 `--dry-run` 只生成安装计划，不检查或安装软件；`--log` 可指定安装日志文件，默认写入当前目录的 `jdb.log`。安装流程默认最多运行 30 分钟，超时后会终止后续命令并输出失败结果。
 
 profile 说明：`java-basic` 适合基础 Java 开发；`spring-backend` 在基础环境上增加 Docker；`java-fullstack` 再增加 Visual Studio Code。不指定 profile 时使用清单中的全部软件。
+
+## 发布
+
+推送形如 `v0.1.0` 的 Git 标签后，GitHub Actions 会自动构建 Windows amd64/arm64、macOS amd64/arm64 二进制文件，并在 GitHub Release 中附带 SHA256 校验文件。
 
 ## 前置条件
 
