@@ -60,6 +60,17 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 			return fmt.Errorf("未知参数: %s", args[i])
 		}
 	}
+	// 版本和 profile 列表不依赖操作系统，允许在 Linux CI 等环境中执行。
+	if command == "version" {
+		fmt.Fprintf(out, "版本：%s\n", version.Display())
+		return nil
+	}
+	if command == "profiles" {
+		for _, name := range service.ProfileNames() {
+			fmt.Fprintln(out, "-", name)
+		}
+		return nil
+	}
 	var manifest model.Manifest
 	var err error
 	if manifestPath == DefaultManifest {
@@ -81,14 +92,6 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		return err
 	}
 	switch command {
-	case "version":
-		fmt.Fprintf(out, "版本：%s\n", version.Display())
-		return nil
-	case "profiles":
-		for _, name := range service.ProfileNames() {
-			fmt.Fprintln(out, "-", name)
-		}
-		return nil
 	case "list":
 		packages, err := manifest.PackagesForPlatform(current)
 		if err != nil {

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -29,6 +30,9 @@ func TestRunHelpContainsDryRunOption(t *testing.T) {
 }
 
 func TestRunDryRunDoesNotAskForConfirmation(t *testing.T) {
+	if runtime.GOOS != "windows" && runtime.GOOS != "darwin" {
+		t.Skip("dry-run 的平台执行测试只在产品支持的平台运行")
+	}
 	var output strings.Builder
 	if err := Run(context.Background(), []string{"install", "--dry-run"}, &output, &output); err != nil {
 		t.Fatalf("dry-run 不应失败: %v", err)
