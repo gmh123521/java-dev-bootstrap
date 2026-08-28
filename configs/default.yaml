@@ -1,0 +1,58 @@
+version: 1
+packages:
+  - id: jdk
+    name: Eclipse Temurin JDK 21
+    description: Java 21 开发工具包
+    platforms: [windows, darwin]
+    manager: winget
+    manager_id: EclipseAdoptium.Temurin.21.JDK
+    kind: cask
+    darwin_id: temurin@21
+  - id: git
+    name: Git
+    description: 分布式版本控制工具
+    platforms: [windows, darwin]
+    manager: winget
+    manager_id: Git.Git
+    kind: formula
+    darwin_id: git
+  - id: maven
+    name: Apache Maven
+    description: Java 构建和依赖管理工具
+    platforms: [windows, darwin]
+    manager: winget
+    manager_id: Apache.Maven
+    kind: formula
+    darwin_id: maven
+  - id: gradle
+    name: Gradle
+    description: Java 构建自动化工具
+    platforms: [windows, darwin]
+    manager: winget
+    manager_id: Gradle.Gradle
+    kind: formula
+    darwin_id: gradle
+  - id: intellij
+    name: IntelliJ IDEA Community
+    description: Java 集成开发环境
+    platforms: [windows, darwin]
+    manager: winget
+    manager_id: JetBrains.IntelliJIDEA.Community
+    kind: cask
+    darwin_id: intellij-idea-ce
+  - id: vscode
+    name: Visual Studio Code
+    description: 轻量级代码编辑器
+    platforms: [windows, darwin]
+    manager: winget
+    manager_id: Microsoft.VisualStudioCode
+    kind: cask
+    darwin_id: visual-studio-code
+  - id: docker
+    name: Docker Desktop
+    description: 容器开发环境
+    platforms: [windows, darwin]
+    manager: winget
+    manager_id: Docker.DockerDesktop
+    kind: cask
+    darwin_id: docker

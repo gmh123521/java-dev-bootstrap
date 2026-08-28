@@ -1,0 +1,10 @@
+version: 2
+builds:
+  - main: ./cmd/jdb
+    binary: jdb
+    goos: [windows, darwin]
+    goarch: [amd64, arm64]
+archives:
+  - formats: [zip]
+checksum:
+  name_template: '校验和.txt'
