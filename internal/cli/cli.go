@@ -25,6 +25,7 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 	manifestPath := DefaultManifest
 	yes := false
 	dryRun := false
+	profile := ""
 	logPath := "jdb.log"
 	timeout := 30 * time.Minute
 	command := args[0]
@@ -34,6 +35,12 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 			yes = true
 		case "--dry-run":
 			dryRun = true
+		case "--profile":
+			if i+1 >= len(args) {
+				return fmt.Errorf("--profile 后必须提供名称")
+			}
+			profile = args[i+1]
+			i++
 		case "--log":
 			if i+1 >= len(args) {
 				return fmt.Errorf("--log 后必须提供文件路径")
@@ -62,11 +69,22 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 	if err != nil {
 		return err
 	}
+	if profile != "" {
+		manifest, err = service.ApplyProfile(manifest, profile)
+		if err != nil {
+			return err
+		}
+	}
 	current, err := platform.Current()
 	if err != nil {
 		return err
 	}
 	switch command {
+	case "profiles":
+		for _, name := range service.ProfileNames() {
+			fmt.Fprintln(out, "-", name)
+		}
+		return nil
 	case "list":
 		packages, err := manifest.PackagesForPlatform(current)
 		if err != nil {
@@ -165,5 +183,5 @@ func help(out io.Writer) error {
 }
 
 func helpText() string {
-	return "Java Dev Bootstrap\n\n用法：jdb <list|plan|install|doctor> [--manifest 路径] [--yes] [--dry-run] [--log 路径]\n"
+	return "Java Dev Bootstrap\n\n用法：jdb <list|profiles|plan|install|doctor> [--manifest 路径] [--profile 名称] [--yes] [--dry-run] [--log 路径]\n"
 }
