@@ -62,7 +62,7 @@ func TestPackageDetectorReportsMissingAfterAllChecks(t *testing.T) {
 	}
 }
 
-func TestPackageDetectorKeepsMissingResultWhenManagerCannotRun(t *testing.T) {
+func TestPackageDetectorReportsErrorWhenManagerCannotRun(t *testing.T) {
 	pkg := model.Package{ID: "gradle", Manager: "winget", ManagerID: "Gradle.Gradle", CheckProgram: "gradle", CheckArgs: []string{"--version"}}
 	runner := packageRunner{results: map[string]ports.Result{
 		"gradle": {Err: exec.ErrNotFound},
@@ -71,8 +71,8 @@ func TestPackageDetectorKeepsMissingResultWhenManagerCannotRun(t *testing.T) {
 
 	result := (PackageDetector{Runner: runner, Platform: model.PlatformWindows}).Detect(context.Background(), pkg)
 
-	if result.Status != StatusMissing || result.Source != "gradle" {
-		t.Fatalf("工具命令明确不存在时应保留缺失结论: %#v", result)
+	if result.Status != StatusError || result.Source != "winget" {
+		t.Fatalf("包管理器查询失败且无输出时必须阻止自动安装: %#v", result)
 	}
 }
 

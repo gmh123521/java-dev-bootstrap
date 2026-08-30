@@ -52,3 +52,17 @@ func TestToolDetectorTreatsMissingCommandAsMissing(t *testing.T) {
 		t.Fatalf("命令不存在应标记为未安装: %#v", result)
 	}
 }
+
+func TestToolDetectorTreatsMacJavaShimWithoutRuntimeAsMissing(t *testing.T) {
+	pkg := model.Package{ID: "jdk", CheckProgram: "javac", CheckArgs: []string{"-version"}, MinVersion: 21}
+	detector := ToolDetector{Runner: toolRunner{result: ports.Result{
+		Output: "The operation couldn't be completed. Unable to locate a Java Runtime.",
+		Err:    errors.New("exit status 1"),
+	}}}
+
+	result := detector.Detect(context.Background(), pkg)
+
+	if result.Status != StatusMissing {
+		t.Fatalf("macOS Java shim 未找到运行时时应标记 JDK 缺失: %#v", result)
+	}
+}

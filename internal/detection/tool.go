@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"strings"
 
 	"github.com/gmh123521/java-dev-bootstrap/internal/model"
 	"github.com/gmh123521/java-dev-bootstrap/internal/ports"
@@ -26,6 +27,9 @@ func (d ToolDetector) Detect(ctx context.Context, pkg model.Package) Result {
 	command := ports.Command{Program: pkg.CheckProgram, Args: pkg.CheckArgs}
 	runResult := d.Runner.Run(ctx, command)
 	if runResult.Err != nil {
+		if pkg.ID == "jdk" && isMissingJavaRuntimeOutput(runResult.Output) {
+			return Result{Status: StatusMissing, Source: pkg.CheckProgram, Detail: runResult.Output}
+		}
 		if errors.Is(runResult.Err, exec.ErrNotFound) {
 			return Result{Status: StatusMissing, Source: pkg.CheckProgram, Detail: "命令不存在"}
 		}
@@ -55,4 +59,11 @@ func (d ToolDetector) Detect(ctx context.Context, pkg model.Package) Result {
 		status = StatusOutdated
 	}
 	return Result{Status: status, Version: version, Source: pkg.CheckProgram, Path: path}
+}
+
+func isMissingJavaRuntimeOutput(output string) bool {
+	text := strings.ToLower(output)
+	return strings.Contains(text, "unable to locate a java runtime") ||
+		strings.Contains(text, "no java runtime present") ||
+		strings.Contains(text, "could not find java")
 }
