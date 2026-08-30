@@ -3,4 +3,7 @@
 /dist/
 /work/
 /.idea/
+/.go-cache/
+jdb-windows-*.exe
+jdb-darwin-*
 jdb.log

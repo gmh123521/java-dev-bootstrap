@@ -11,7 +11,9 @@ Java Dev Bootstrap 是一个面向 Windows 和 macOS 的 Java 开发环境初始
 - Windows 使用 winget，macOS 使用 Homebrew
 - 支持 `list`、`plan`、`install`、`doctor`
 - 支持 `java-basic`、`spring-backend`、`java-fullstack` 三种开发环境预设
-- 支持 `--dry-run` 预览执行、安装超时和中文日志
+- `plan` 会真实检测现有软件，只安装缺失项或升级版本过低的软件
+- 支持 `--dry-run` 纯预览、安装超时和中文日志
+- `doctor` 会诊断 Java、常用工具命令和环境变量
 - 默认内置清单，也可以通过 `--manifest` 使用自定义清单
 
 ## 使用
@@ -30,9 +32,11 @@ jdb install --log 安装日志.txt
 jdb doctor
 ```
 
+`plan` 和 `install` 会优先执行工具的版本命令，再检查常见路径，最后使用 winget 或 Homebrew 记录补充判断。任一种可靠方式检测成功就会跳过安装。JDK 按最低主版本判断，默认要求 Java 21 及以上，不限制 Oracle、Temurin 等发行厂商；例如现有 Java 23 会直接复用。
+
 `install` 默认会先检测已安装软件，再显示计划并要求输入 `yes`。`--yes` 只适合用户已经审阅清单后的自动化场景。
 
-`--dry-run` 只生成安装计划，不检查或安装软件；`--log` 可指定安装日志文件，默认写入当前目录的 `jdb.log`。安装流程默认最多运行 30 分钟，超时后会终止后续命令并输出失败结果。
+`plan` 会执行只读检测，但不会安装软件；`install --dry-run` 只生成命令预览，不访问包管理器也不检查或安装软件。`--log` 可指定安装日志文件，默认写入当前目录的 `jdb.log`。安装流程默认最多运行 30 分钟，超时后会终止后续命令并输出失败结果。
 
 profile 说明：`java-basic` 适合基础 Java 开发；`spring-backend` 在基础环境上增加 Docker；`java-fullstack` 再增加 Visual Studio Code。不指定 profile 时使用清单中的全部软件。
 
@@ -46,6 +50,36 @@ profile 说明：`java-basic` 适合基础 Java 开发；`spring-backend` 在基
 - macOS：需要可用的 Homebrew。
 - 安装软件时可能需要系统管理员权限、网络连接和包管理器自身的协议确认。
 - `doctor` 会实际执行包管理器版本检查；如果提示 winget 或 Homebrew 不可用，应先修复包管理器再运行安装。
+
+## 安装位置与环境变量
+
+Java Dev Bootstrap 不强制指定安装目录。Windows 上的实际位置由 winget 清单和软件官方安装器决定，macOS 上由 Homebrew 决定。常见位置如下：
+
+| 软件 | Windows 常见位置 | macOS 常见位置 |
+| --- | --- | --- |
+| JDK | `C:\Program Files\Eclipse Adoptium\jdk-21*` | `/Library/Java/JavaVirtualMachines/temurin-21.jdk` |
+| Git | `C:\Program Files\Git` | Homebrew 前缀下的 `bin/git` |
+| Maven/Gradle | `%LOCALAPPDATA%\Microsoft\WinGet\Packages` | Homebrew 前缀下的 Cellar |
+| IntelliJ IDEA | `C:\Program Files\JetBrains` 或用户选择的目录 | `/Applications` |
+| VS Code | `%LOCALAPPDATA%\Programs\Microsoft VS Code` | `/Applications` |
+| Docker Desktop | `C:\Program Files\Docker\Docker` | `/Applications` |
+
+程序当前不会主动覆盖 `JAVA_HOME`、`MAVEN_HOME`、`GRADLE_HOME` 或 `PATH`。部分官方安装器会自行更新 PATH，安装结束后通常需要重新打开终端。使用下面的命令检查最终状态：
+
+```text
+jdb doctor
+```
+
+`doctor` 会比较 `JAVA_HOME/bin/java` 与 PATH 中 `java` 的实际版本，并检查 Git、Maven、Gradle、VS Code 和 Docker 命令。发现问题时只输出建议，不调用 `setx`、不修改注册表，也不覆盖用户已有配置。
+
+常见用户配置目录：
+
+- Git：`%USERPROFILE%\.gitconfig`
+- Maven：`%USERPROFILE%\.m2\settings.xml` 和 `%USERPROFILE%\.m2\repository`
+- Gradle：`%USERPROFILE%\.gradle`
+- IntelliJ IDEA：`%APPDATA%\JetBrains`
+- VS Code：`%APPDATA%\Code\User`
+- Docker：`%USERPROFILE%\.docker`
 
 ## 安全边界
 
