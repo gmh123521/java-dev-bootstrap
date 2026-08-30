@@ -24,14 +24,17 @@ func CurrentPlatform() (Platform, error) {
 }
 
 type Package struct {
-	ID          string     `yaml:"id"`
-	Name        string     `yaml:"name"`
-	Description string     `yaml:"description"`
-	Platforms   []Platform `yaml:"platforms"`
-	Manager     string     `yaml:"manager"`
-	ManagerID   string     `yaml:"manager_id"`
-	Kind        string     `yaml:"kind"`
-	DarwinID    string     `yaml:"darwin_id"`
+	ID           string     `yaml:"id"`
+	Name         string     `yaml:"name"`
+	Description  string     `yaml:"description"`
+	Platforms    []Platform `yaml:"platforms"`
+	Manager      string     `yaml:"manager"`
+	ManagerID    string     `yaml:"manager_id"`
+	Kind         string     `yaml:"kind"`
+	DarwinID     string     `yaml:"darwin_id"`
+	CheckProgram string     `yaml:"check_program"`
+	CheckArgs    []string   `yaml:"check_args"`
+	MinVersion   int        `yaml:"min_version"`
 }
 
 func (p Package) ManagerIDFor(platform Platform) string {

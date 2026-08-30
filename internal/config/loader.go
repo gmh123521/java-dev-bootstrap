@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/gmh123521/java-dev-bootstrap/internal/model"
@@ -86,6 +87,16 @@ func parseManifest(content string) (model.Manifest, error) {
 			current.Kind = valueAfterColon(line)
 		case strings.HasPrefix(line, "darwin_id:"):
 			current.DarwinID = valueAfterColon(line)
+		case strings.HasPrefix(line, "check_program:"):
+			current.CheckProgram = valueAfterColon(line)
+		case strings.HasPrefix(line, "check_args:"):
+			current.CheckArgs = listAfterColon(line)
+		case strings.HasPrefix(line, "min_version:"):
+			minimum, err := strconv.Atoi(valueAfterColon(line))
+			if err != nil {
+				return manifest, fmt.Errorf("最低版本必须是整数: %s", line)
+			}
+			current.MinVersion = minimum
 		default:
 			return manifest, fmt.Errorf("无法识别的字段: %s", line)
 		}
@@ -94,6 +105,19 @@ func parseManifest(content string) (model.Manifest, error) {
 		return manifest, err
 	}
 	return manifest, nil
+}
+
+func listAfterColon(line string) []string {
+	value := strings.Trim(valueAfterColon(line), "[]")
+	if strings.TrimSpace(value) == "" {
+		return nil
+	}
+	items := strings.Split(value, ",")
+	result := make([]string, 0, len(items))
+	for _, item := range items {
+		result = append(result, strings.Trim(strings.TrimSpace(item), "\""))
+	}
+	return result
 }
 
 func valueAfterColon(line string) string {
