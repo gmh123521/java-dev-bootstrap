@@ -3,6 +3,7 @@ package config
 import (
 	"bufio"
 	_ "embed"
+	"encoding/csv"
 	"fmt"
 	"os"
 	"strconv"
@@ -90,9 +91,17 @@ func parseManifest(content string) (model.Manifest, error) {
 		case strings.HasPrefix(line, "check_program:"):
 			current.CheckProgram = valueAfterColon(line)
 		case strings.HasPrefix(line, "check_args:"):
-			current.CheckArgs = listAfterColon(line)
+			values, err := listAfterColon(line)
+			if err != nil {
+				return manifest, fmt.Errorf("解析检测参数失败: %w", err)
+			}
+			current.CheckArgs = values
 		case strings.HasPrefix(line, "check_paths:"):
-			current.CheckPaths = listAfterColon(line)
+			values, err := listAfterColon(line)
+			if err != nil {
+				return manifest, fmt.Errorf("解析检测路径失败: %w", err)
+			}
+			current.CheckPaths = values
 		case strings.HasPrefix(line, "min_version:"):
 			minimum, err := strconv.Atoi(valueAfterColon(line))
 			if err != nil {
@@ -109,12 +118,18 @@ func parseManifest(content string) (model.Manifest, error) {
 	return manifest, nil
 }
 
-func listAfterColon(line string) []string {
+func listAfterColon(line string) ([]string, error) {
 	value := strings.Trim(valueAfterColon(line), "[]")
 	if strings.TrimSpace(value) == "" {
-		return nil
+		return nil, nil
 	}
-	items := strings.Split(value, ",")
+	reader := csv.NewReader(strings.NewReader(value))
+	reader.TrimLeadingSpace = true
+	reader.FieldsPerRecord = -1
+	items, err := reader.Read()
+	if err != nil {
+		return nil, err
+	}
 	result := make([]string, 0, len(items))
 	for _, item := range items {
 		item = strings.TrimSpace(item)
@@ -124,9 +139,10 @@ func listAfterColon(line string) []string {
 				continue
 			}
 		}
-		result = append(result, strings.Trim(item, "\""))
+		item = strings.Trim(item, "\"")
+		result = append(result, strings.ReplaceAll(item, `\\`, `\`))
 	}
-	return result
+	return result, nil
 }
 
 func valueAfterColon(line string) string {

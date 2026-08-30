@@ -31,6 +31,9 @@ func TestEnvironmentDetectorWarnsWhenJavaHomeMissing(t *testing.T) {
 	if !hasDiagnostic(items, "JAVA_HOME", LevelWarning) {
 		t.Fatalf("JAVA_HOME 缺失应给出警告: %#v", items)
 	}
+	if !hasDiagnostic(items, "Java PATH", LevelOK) {
+		t.Fatalf("JAVA_HOME 缺失时仍应诊断 PATH 中的 Java: %#v", items)
+	}
 }
 
 func TestEnvironmentDetectorAcceptsMatchingJavaVersions(t *testing.T) {
@@ -40,6 +43,9 @@ func TestEnvironmentDetectorAcceptsMatchingJavaVersions(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(homeJava, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(home, "bin", "javac.exe"), nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	pathJava := `C:\Program Files\Common Files\Oracle\Java\javapath\java.exe`
@@ -73,6 +79,9 @@ func TestEnvironmentDetectorWarnsWhenJavaVersionsDiffer(t *testing.T) {
 	if err := os.WriteFile(homeJava, nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(filepath.Join(home, "bin", "javac.exe"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
 	pathJava := `C:\Java17\bin\java.exe`
 	detector := EnvironmentDetector{
 		Getenv: func(name string) string {
@@ -95,6 +104,33 @@ func TestEnvironmentDetectorWarnsWhenJavaVersionsDiffer(t *testing.T) {
 	}
 }
 
+func TestEnvironmentDetectorRejectsJavaHomeWithoutCompiler(t *testing.T) {
+	home := t.TempDir()
+	homeJava := filepath.Join(home, "bin", "java.exe")
+	if err := os.MkdirAll(filepath.Dir(homeJava), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(homeJava, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	detector := EnvironmentDetector{
+		Getenv: func(name string) string {
+			if name == "JAVA_HOME" {
+				return home
+			}
+			return ""
+		},
+		LookPath: func(string) (string, error) { return homeJava, nil },
+		Runner:   environmentRunner{outputs: map[string]string{homeJava: `java version "23.0.2"`}},
+	}
+
+	items := detector.Diagnose(context.Background(), model.PlatformWindows)
+
+	if !hasDiagnostic(items, "JDK 完整性", LevelWarning) {
+		t.Fatalf("缺少 javac 时不应认定为完整 JDK: %#v", items)
+	}
+}
+
 func TestEnvironmentDetectorReportsToolAvailability(t *testing.T) {
 	detector := EnvironmentDetector{
 		LookPath: func(program string) (string, error) { return program, nil },
@@ -112,6 +148,31 @@ func TestEnvironmentDetectorReportsToolAvailability(t *testing.T) {
 
 	if !hasDiagnostic(items, "Git", LevelOK) || !hasDiagnostic(items, "Gradle", LevelWarning) {
 		t.Fatalf("工具可用性诊断错误: %#v", items)
+	}
+}
+
+type applicationDetector struct {
+	results map[string]Result
+}
+
+func (d applicationDetector) Detect(_ context.Context, pkg model.Package) Result {
+	return d.results[pkg.ID]
+}
+
+func TestEnvironmentDetectorReportsDesktopApplications(t *testing.T) {
+	packages := []model.Package{
+		{ID: "intellij", Name: "IntelliJ IDEA"},
+		{ID: "docker", Name: "Docker Desktop"},
+	}
+	detector := applicationDetector{results: map[string]Result{
+		"intellij": {Status: StatusInstalled, Source: "path", Path: `D:\idea\idea64.exe`},
+		"docker":   {Status: StatusMissing, Source: "winget"},
+	}}
+
+	items := (EnvironmentDetector{}).DiagnoseApplications(context.Background(), packages, detector)
+
+	if !hasDiagnostic(items, "IntelliJ IDEA", LevelOK) || !hasDiagnostic(items, "Docker Desktop", LevelWarning) {
+		t.Fatalf("桌面软件诊断错误: %#v", items)
 	}
 }
 

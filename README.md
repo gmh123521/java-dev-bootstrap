@@ -32,11 +32,13 @@ jdb install --log 安装日志.txt
 jdb doctor
 ```
 
-`plan` 和 `install` 会优先执行工具的版本命令，再检查常见路径，最后使用 winget 或 Homebrew 记录补充判断。任一种可靠方式检测成功就会跳过安装。JDK 按最低主版本判断，默认要求 Java 21 及以上，不限制 Oracle、Temurin 等发行厂商；例如现有 Java 23 会直接复用。
+`plan` 和 `install` 会优先执行工具的版本命令，再检查实际应用路径，最后使用 winget 或 Homebrew 记录补充判断。任一种可靠方式检测成功就会跳过安装。JDK 通过 `javac -version` 判断完整性和最低主版本，默认要求 JDK 21 及以上，不限制 Oracle、Temurin 等发行厂商；例如现有完整 JDK 23 会直接复用，只有 `java` 而没有 `javac` 的运行时不会被误判为 JDK。
+
+IntelliJ IDEA 和 Docker Desktop 使用应用程序路径与包管理器记录检测。JetBrains 用户配置残留不会被当成已安装，单独存在 `docker` CLI 也不会被当成 Docker Desktop。
 
 `install` 默认会先检测已安装软件，再显示计划并要求输入 `yes`。`--yes` 只适合用户已经审阅清单后的自动化场景。
 
-`plan` 会执行只读检测，但不会安装软件；`install --dry-run` 只生成命令预览，不访问包管理器也不检查或安装软件。`--log` 可指定安装日志文件，默认写入当前目录的 `jdb.log`。安装流程默认最多运行 30 分钟，超时后会终止后续命令并输出失败结果。
+`plan` 会执行只读检测，但不会安装软件，整次检测最多运行 2 分钟；`install --dry-run` 只生成命令预览，不访问包管理器也不检查或安装软件。`--log` 可指定安装日志文件，默认写入当前目录的 `jdb.log`。一次完整安装默认最多运行 30 分钟，超时后会终止当前命令和后续安装并输出失败结果。
 
 profile 说明：`java-basic` 适合基础 Java 开发；`spring-backend` 在基础环境上增加 Docker；`java-fullstack` 再增加 Visual Studio Code。不指定 profile 时使用清单中的全部软件。
 

@@ -4,6 +4,7 @@
 /work/
 /.idea/
 /.go-cache/
+/.gocache/
 jdb-windows-*.exe
 jdb-darwin-*
 jdb.log

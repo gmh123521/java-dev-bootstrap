@@ -8,7 +8,7 @@ packages:
     manager_id: EclipseAdoptium.Temurin.21.JDK
     kind: cask
     darwin_id: temurin@21
-    check_program: java
+    check_program: javac
     check_args: [-version]
     min_version: 21
   - id: git
@@ -49,7 +49,7 @@ packages:
     manager_id: JetBrains.IntelliJIDEA.Community
     kind: cask
     darwin_id: intellij-idea-ce
-    check_paths: ["%APPDATA%\\JetBrains\\IntelliJIdea*", "%APPDATA%\\JetBrains\\IdeaIC*", "$HOME/Library/Application Support/JetBrains/IntelliJIdea*", "$HOME/Library/Application Support/JetBrains/IdeaIC*"]
+    check_paths: ["%PROGRAMFILES%\\JetBrains\\IntelliJ IDEA*\\bin\\idea64.exe", "%LOCALAPPDATA%\\Programs\\IntelliJ IDEA*\\bin\\idea64.exe", "%LOCALAPPDATA%\\JetBrains\\Toolbox\\apps\\IDEA-*\\*\\*\\bin\\idea64.exe", "{drive}:\\idea\\IntelliJ IDEA*\\bin\\idea64.exe", "/Applications/IntelliJ IDEA*.app"]
   - id: vscode
     name: Visual Studio Code
     description: 轻量级代码编辑器
@@ -68,5 +68,4 @@ packages:
     manager_id: Docker.DockerDesktop
     kind: cask
     darwin_id: docker
-    check_program: docker
-    check_args: [--version]
+    check_paths: ["%PROGRAMFILES%\\Docker\\Docker\\Docker Desktop.exe", "%LOCALAPPDATA%\\Docker\\Docker Desktop.exe", "/Applications/Docker.app"]

@@ -2,9 +2,11 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gmh123521/java-dev-bootstrap/internal/detection"
 	"github.com/gmh123521/java-dev-bootstrap/internal/model"
@@ -65,6 +67,43 @@ func TestFormatDiagnosticShowsLevelAndSuggestion(t *testing.T) {
 	ok := formatDiagnostic(detection.Diagnostic{Level: detection.LevelOK, Name: "Java 版本", Current: "23.0.2"})
 	if !strings.Contains(ok, "[正常]") {
 		t.Fatalf("正常诊断输出错误: %s", ok)
+	}
+}
+
+func TestManagerDiagnosticTurnsManagerFailureIntoWarning(t *testing.T) {
+	item := managerDiagnostic("winget", ports.Result{Err: errors.New("命令不存在")})
+	if item.Level != detection.LevelWarning || item.Name != "包管理器 winget" {
+		t.Fatalf("包管理器失败应转换为警告: %#v", item)
+	}
+	if item.Suggestion == "" {
+		t.Fatal("包管理器失败应提供修复建议")
+	}
+}
+
+func TestOperationContextUsesSingleInstallDeadline(t *testing.T) {
+	timeout := 30 * time.Minute
+	ctx, cancel := operationContext(context.Background(), "install", false, timeout)
+	defer cancel()
+	deadline, ok := ctx.Deadline()
+	if !ok {
+		t.Fatal("实际安装必须有统一截止时间")
+	}
+	remaining := time.Until(deadline)
+	if remaining <= 29*time.Minute || remaining > timeout {
+		t.Fatalf("安装截止时间错误: %s", remaining)
+	}
+
+	dryRunCtx, dryRunCancel := operationContext(context.Background(), "install", true, timeout)
+	defer dryRunCancel()
+	if _, ok := dryRunCtx.Deadline(); ok {
+		t.Fatal("纯 dry-run 不应增加安装超时")
+	}
+
+	planCtx, planCancel := operationContext(context.Background(), "plan", false, timeout)
+	defer planCancel()
+	planDeadline, ok := planCtx.Deadline()
+	if !ok || time.Until(planDeadline) > 2*time.Minute {
+		t.Fatal("只读计划应有不超过 2 分钟的统一检测超时")
 	}
 }
 

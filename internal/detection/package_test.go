@@ -75,3 +75,43 @@ func TestPackageDetectorKeepsMissingResultWhenManagerCannotRun(t *testing.T) {
 		t.Fatalf("工具命令明确不存在时应保留缺失结论: %#v", result)
 	}
 }
+
+func TestPackageDetectorUsesInstalledManagerPackageWhenPathCommandIsOld(t *testing.T) {
+	pkg := model.Package{ID: "jdk", Manager: "winget", ManagerID: "EclipseAdoptium.Temurin.21.JDK", CheckProgram: "javac", CheckArgs: []string{"-version"}, MinVersion: 21}
+	runner := packageRunner{results: map[string]ports.Result{
+		"javac":  {Output: "javac 17.0.12"},
+		"winget": {Output: "Eclipse Temurin JDK 21"},
+	}}
+
+	result := (PackageDetector{Runner: runner, Platform: model.PlatformWindows}).Detect(context.Background(), pkg)
+
+	if result.Status != StatusInstalled || result.Source != "winget" {
+		t.Fatalf("包管理器中的满足版本软件应覆盖 PATH 旧版本: %#v", result)
+	}
+}
+
+func TestPackageDetectorDoesNotTreatManagerErrorsAsMissing(t *testing.T) {
+	pkg := model.Package{ID: "intellij", Manager: "winget", ManagerID: "JetBrains.IntelliJIDEA.Community"}
+	runner := packageRunner{results: map[string]ports.Result{
+		"winget": {Output: "Failed when opening source; database is corrupted", Err: errors.New("退出代码 1")},
+	}}
+
+	result := (PackageDetector{Runner: runner, Platform: model.PlatformWindows}).Detect(context.Background(), pkg)
+
+	if result.Status != StatusError {
+		t.Fatalf("包管理器故障不应解释为软件缺失: %#v", result)
+	}
+}
+
+func TestCandidatePatternsExpandsWindowsDrivePlaceholder(t *testing.T) {
+	patterns := candidatePatterns(`{drive}:\idea\IntelliJ IDEA*\bin\idea64.exe`, model.PlatformWindows)
+	foundD := false
+	for _, pattern := range patterns {
+		if pattern == `D:\idea\IntelliJ IDEA*\bin\idea64.exe` {
+			foundD = true
+		}
+	}
+	if !foundD {
+		t.Fatalf("Windows 路径模式应覆盖 D 盘: %#v", patterns)
+	}
+}

@@ -124,7 +124,9 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 			Detector: packageDetector,
 			Timeout:  timeout,
 		}
-		preflightCtx, preflightCancel := context.WithTimeout(ctx, 30*time.Second)
+		operationCtx, operationCancel := operationContext(ctx, command, dryRun, timeout)
+		defer operationCancel()
+		preflightCtx, preflightCancel := context.WithTimeout(operationCtx, 30*time.Second)
 		defer preflightCancel()
 		if command == "install" && !dryRun {
 			managerCheck, checkErr := platform.ManagerCheckCommand(current)
@@ -136,7 +138,7 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 				return fmt.Errorf("包管理器不可用，请先安装或修复：%w", managerResult.Err)
 			}
 		}
-		items, err := bootstrap.Plan(ctx, manifest, current)
+		items, err := bootstrap.Plan(operationCtx, manifest, current)
 		if err != nil {
 			return err
 		}
@@ -157,7 +159,7 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 				return fmt.Errorf("未确认安装")
 			}
 		}
-		report := bootstrap.InstallReport(ctx, items)
+		report := bootstrap.InstallReport(operationCtx, items)
 		fmt.Fprintf(out, "\n安装汇总：成功 %d，跳过 %d，失败 %d\n", report.Succeeded, report.Skipped, report.Failed)
 		if report.Failed > 0 {
 			for _, installErr := range report.Errors {
@@ -178,14 +180,14 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		doctorCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 		defer cancel()
 		result := (platform.ExecRunner{}).Run(doctorCtx, check)
-		if result.Err != nil {
-			return fmt.Errorf("包管理器 %s 不可用，请先安装或修复：%w", manager, result.Err)
-		}
-		fmt.Fprintf(out, "操作系统：%s\n清单：%s\n包管理器：%s（%s）\n", current, manifestPath, manager, result.Output)
+		fmt.Fprintf(out, "操作系统：%s\n清单：%s\n", current, manifestPath)
+		fmt.Fprintln(out, formatDiagnostic(managerDiagnostic(manager, result)))
 		fmt.Fprintln(out, "环境诊断：")
 		environmentDetector := detection.EnvironmentDetector{Runner: platform.ExecRunner{}}
 		diagnostics := environmentDetector.Diagnose(doctorCtx, current)
 		diagnostics = append(diagnostics, environmentDetector.DiagnoseTools(doctorCtx, manifest.Packages)...)
+		applicationDetector := detection.PackageDetector{Runner: platform.ExecRunner{}, Platform: current}
+		diagnostics = append(diagnostics, environmentDetector.DiagnoseApplications(doctorCtx, manifest.Packages, applicationDetector)...)
 		for _, diagnostic := range diagnostics {
 			fmt.Fprintln(out, formatDiagnostic(diagnostic))
 		}
@@ -243,6 +245,28 @@ func formatDiagnostic(item detection.Diagnostic) string {
 		result += "；建议：" + item.Suggestion
 	}
 	return result
+}
+
+func managerDiagnostic(manager string, result ports.Result) detection.Diagnostic {
+	if result.Err != nil {
+		return detection.Diagnostic{
+			Level:      detection.LevelWarning,
+			Name:       "包管理器 " + manager,
+			Current:    "不可用",
+			Suggestion: "先安装或修复 " + manager + "，再执行软件安装",
+		}
+	}
+	return detection.Diagnostic{Level: detection.LevelOK, Name: "包管理器 " + manager, Current: result.Output}
+}
+
+func operationContext(ctx context.Context, command string, dryRun bool, timeout time.Duration) (context.Context, context.CancelFunc) {
+	if command == "install" && !dryRun {
+		return context.WithTimeout(ctx, timeout)
+	}
+	if command == "plan" {
+		return context.WithTimeout(ctx, 2*time.Minute)
+	}
+	return context.WithCancel(ctx)
 }
 
 func help(out io.Writer) error {
