@@ -182,6 +182,13 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 			return fmt.Errorf("包管理器 %s 不可用，请先安装或修复：%w", manager, result.Err)
 		}
 		fmt.Fprintf(out, "操作系统：%s\n清单：%s\n包管理器：%s（%s）\n", current, manifestPath, manager, result.Output)
+		fmt.Fprintln(out, "环境诊断：")
+		environmentDetector := detection.EnvironmentDetector{Runner: platform.ExecRunner{}}
+		diagnostics := environmentDetector.Diagnose(doctorCtx, current)
+		diagnostics = append(diagnostics, environmentDetector.DiagnoseTools(doctorCtx, manifest.Packages)...)
+		for _, diagnostic := range diagnostics {
+			fmt.Fprintln(out, formatDiagnostic(diagnostic))
+		}
 		return nil
 	default:
 		return fmt.Errorf("未知命令: %s\n%s", command, helpText())
@@ -224,6 +231,18 @@ func formatPlanItem(item service.PlanItem) string {
 		detail += "；执行 " + formatCommand(item.Command)
 	}
 	return fmt.Sprintf("- %s：%s [%s]", item.Package.Name, detail, action)
+}
+
+func formatDiagnostic(item detection.Diagnostic) string {
+	level := "正常"
+	if item.Level == detection.LevelWarning {
+		level = "警告"
+	}
+	result := fmt.Sprintf("- [%s] %s：%s", level, item.Name, item.Current)
+	if item.Suggestion != "" {
+		result += "；建议：" + item.Suggestion
+	}
+	return result
 }
 
 func help(out io.Writer) error {

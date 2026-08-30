@@ -53,6 +53,21 @@ func TestFormatPlanItemShowsMissingPackage(t *testing.T) {
 	}
 }
 
+func TestFormatDiagnosticShowsLevelAndSuggestion(t *testing.T) {
+	warning := detection.Diagnostic{Level: detection.LevelWarning, Name: "JAVA_HOME", Current: "未设置", Suggestion: "指向 JDK 根目录"}
+	actual := formatDiagnostic(warning)
+	for _, expected := range []string{"[警告]", "JAVA_HOME", "未设置", "建议：指向 JDK 根目录"} {
+		if !strings.Contains(actual, expected) {
+			t.Fatalf("诊断输出缺少 %q: %s", expected, actual)
+		}
+	}
+
+	ok := formatDiagnostic(detection.Diagnostic{Level: detection.LevelOK, Name: "Java 版本", Current: "23.0.2"})
+	if !strings.Contains(ok, "[正常]") {
+		t.Fatalf("正常诊断输出错误: %s", ok)
+	}
+}
+
 func TestRunHelpContainsDryRunOption(t *testing.T) {
 	var output strings.Builder
 	if err := Run(context.Background(), nil, &output, &output); err != nil {
