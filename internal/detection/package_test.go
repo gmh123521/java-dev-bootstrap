@@ -61,3 +61,17 @@ func TestPackageDetectorReportsMissingAfterAllChecks(t *testing.T) {
 		t.Fatalf("所有检查均未发现时应标记缺失: %#v", result)
 	}
 }
+
+func TestPackageDetectorKeepsMissingResultWhenManagerCannotRun(t *testing.T) {
+	pkg := model.Package{ID: "gradle", Manager: "winget", ManagerID: "Gradle.Gradle", CheckProgram: "gradle", CheckArgs: []string{"--version"}}
+	runner := packageRunner{results: map[string]ports.Result{
+		"gradle": {Err: exec.ErrNotFound},
+		"winget": {Err: errors.New("系统无法访问此文件")},
+	}}
+
+	result := (PackageDetector{Runner: runner, Platform: model.PlatformWindows}).Detect(context.Background(), pkg)
+
+	if result.Status != StatusMissing || result.Source != "gradle" {
+		t.Fatalf("工具命令明确不存在时应保留缺失结论: %#v", result)
+	}
+}

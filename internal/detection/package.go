@@ -20,6 +20,7 @@ type PackageDetector struct {
 
 func (d PackageDetector) Detect(ctx context.Context, pkg model.Package) Result {
 	var commandError Result
+	var commandMissing Result
 	if pkg.CheckProgram != "" {
 		commandResult := (ToolDetector{Runner: d.Runner, LookPath: d.LookPath}).Detect(ctx, pkg)
 		switch commandResult.Status {
@@ -27,6 +28,8 @@ func (d PackageDetector) Detect(ctx context.Context, pkg model.Package) Result {
 			return commandResult
 		case StatusError:
 			commandError = commandResult
+		case StatusMissing:
+			commandMissing = commandResult
 		}
 	}
 
@@ -63,6 +66,10 @@ func (d PackageDetector) Detect(ctx context.Context, pkg model.Package) Result {
 			return commandError
 		}
 		return Result{Status: StatusMissing, Source: manager, Detail: managerResult.Output}
+	}
+	if commandMissing.Status == StatusMissing {
+		commandMissing.Detail = "命令不存在；包管理器状态查询不可用"
+		return commandMissing
 	}
 	return Result{Status: StatusError, Source: manager, Err: managerResult.Err}
 }
