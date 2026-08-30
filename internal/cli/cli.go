@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gmh123521/java-dev-bootstrap/internal/config"
+	"github.com/gmh123521/java-dev-bootstrap/internal/detection"
 	"github.com/gmh123521/java-dev-bootstrap/internal/logging"
 	"github.com/gmh123521/java-dev-bootstrap/internal/model"
 	"github.com/gmh123521/java-dev-bootstrap/internal/platform"
@@ -102,7 +103,10 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		}
 		return nil
 	case "plan", "install":
+		execRunner := platform.ExecRunner{}
 		var runner ports.Runner
+		var detectionRunner ports.Runner = execRunner
+		var packageDetector detection.Detector
 		if command == "install" && !dryRun {
 			logFile, openErr := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
 			if openErr != nil {
@@ -110,8 +114,16 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 			}
 			defer logFile.Close()
 			runner = logging.Runner{Inner: platform.ExecRunner{}, Logger: logging.New(logFile)}
+			detectionRunner = runner
 		}
-		bootstrap := service.Bootstrap{Runner: runner, Timeout: timeout}
+		if !dryRun {
+			packageDetector = detection.PackageDetector{Runner: detectionRunner, Platform: current}
+		}
+		bootstrap := service.Bootstrap{
+			Runner:   runner,
+			Detector: packageDetector,
+			Timeout:  timeout,
+		}
 		preflightCtx, preflightCancel := context.WithTimeout(ctx, 30*time.Second)
 		defer preflightCancel()
 		if command == "install" && !dryRun {
@@ -124,19 +136,16 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 				return fmt.Errorf("包管理器不可用，请先安装或修复：%w", managerResult.Err)
 			}
 		}
-		items, err := bootstrap.Plan(preflightCtx, manifest, current)
+		items, err := bootstrap.Plan(ctx, manifest, current)
 		if err != nil {
 			return err
 		}
 		pending := 0
 		for _, item := range items {
-			status := "待安装"
-			if item.Skipped {
-				status = "已安装，跳过"
-			} else {
+			if !item.Skipped {
 				pending++
 			}
-			fmt.Fprintf(out, "- %s：%s [%s]\n", item.Package.Name, formatCommand(item.Command), status)
+			fmt.Fprintln(out, formatPlanItem(item))
 		}
 		if command == "plan" || dryRun || pending == 0 {
 			return nil
@@ -182,6 +191,39 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 func formatCommand(command ports.Command) string {
 	parts := append([]string{command.Program}, command.Args...)
 	return strings.Join(parts, " ")
+}
+
+func formatPlanItem(item service.PlanItem) string {
+	detail := "未检测到"
+	action := "待安装"
+	switch item.Detection.Status {
+	case detection.StatusInstalled:
+		detail = "已安装"
+		if item.Detection.Version != "" {
+			detail += " " + item.Detection.Version
+		}
+		action = "跳过"
+	case detection.StatusOutdated:
+		detail = "版本过低"
+		if item.Detection.Version != "" {
+			detail += " " + item.Detection.Version
+		}
+		action = "待升级"
+	case detection.StatusMissing:
+		detail = "未检测到"
+	case detection.StatusError:
+		detail = "检测失败"
+	}
+	if item.Detection.Source != "" {
+		detail += "，来源 " + item.Detection.Source
+	}
+	if item.Detection.Path != "" {
+		detail += "，路径 " + item.Detection.Path
+	}
+	if !item.Skipped {
+		detail += "；执行 " + formatCommand(item.Command)
+	}
+	return fmt.Sprintf("- %s：%s [%s]", item.Package.Name, detail, action)
 }
 
 func help(out io.Writer) error {

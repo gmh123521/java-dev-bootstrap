@@ -49,6 +49,7 @@ packages:
     manager_id: JetBrains.IntelliJIDEA.Community
     kind: cask
     darwin_id: intellij-idea-ce
+    check_paths: ["%APPDATA%\\JetBrains\\IntelliJIdea*", "%APPDATA%\\JetBrains\\IdeaIC*", "$HOME/Library/Application Support/JetBrains/IntelliJIdea*", "$HOME/Library/Application Support/JetBrains/IdeaIC*"]
   - id: vscode
     name: Visual Studio Code
     description: 轻量级代码编辑器

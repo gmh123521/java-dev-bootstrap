@@ -5,6 +5,11 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/gmh123521/java-dev-bootstrap/internal/detection"
+	"github.com/gmh123521/java-dev-bootstrap/internal/model"
+	"github.com/gmh123521/java-dev-bootstrap/internal/ports"
+	"github.com/gmh123521/java-dev-bootstrap/internal/service"
 )
 
 func TestRunHelpContainsCommands(t *testing.T) {
@@ -16,6 +21,35 @@ func TestRunHelpContainsCommands(t *testing.T) {
 		if !strings.Contains(output.String(), command) {
 			t.Fatalf("帮助缺少命令 %q: %s", command, output.String())
 		}
+	}
+}
+
+func TestFormatPlanItemShowsInstalledDetails(t *testing.T) {
+	item := service.PlanItem{
+		Package:   model.Package{Name: "JDK"},
+		Command:   ports.Command{Program: "winget", Args: []string{"install", "jdk"}},
+		Skipped:   true,
+		Detection: detection.Result{Status: detection.StatusInstalled, Version: "23.0.2", Source: "java", Path: `D:\java\jdk\bin\java.exe`},
+	}
+
+	actual := formatPlanItem(item)
+	for _, expected := range []string{"已安装 23.0.2", "来源 java", `D:\java\jdk\bin\java.exe`, "[跳过]"} {
+		if !strings.Contains(actual, expected) {
+			t.Fatalf("计划输出缺少 %q: %s", expected, actual)
+		}
+	}
+}
+
+func TestFormatPlanItemShowsMissingPackage(t *testing.T) {
+	item := service.PlanItem{
+		Package:   model.Package{Name: "Gradle"},
+		Command:   ports.Command{Program: "winget", Args: []string{"install", "gradle"}},
+		Detection: detection.Result{Status: detection.StatusMissing, Source: "gradle"},
+	}
+
+	actual := formatPlanItem(item)
+	if !strings.Contains(actual, "未检测到") || !strings.Contains(actual, "[待安装]") {
+		t.Fatalf("缺失软件计划输出错误: %s", actual)
 	}
 }
 

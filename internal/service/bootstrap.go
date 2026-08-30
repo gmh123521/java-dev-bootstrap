@@ -5,15 +5,17 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/gmh123521/java-dev-bootstrap/internal/detection"
 	"github.com/gmh123521/java-dev-bootstrap/internal/model"
 	platformexec "github.com/gmh123521/java-dev-bootstrap/internal/platform"
 	"github.com/gmh123521/java-dev-bootstrap/internal/ports"
 )
 
 type PlanItem struct {
-	Package model.Package
-	Command ports.Command
-	Skipped bool
+	Package   model.Package
+	Command   ports.Command
+	Skipped   bool
+	Detection detection.Result
 }
 
 type InstallReport struct {
@@ -24,8 +26,9 @@ type InstallReport struct {
 }
 
 type Bootstrap struct {
-	Runner  ports.Runner
-	Timeout time.Duration
+	Runner   ports.Runner
+	Detector detection.Detector
+	Timeout  time.Duration
 }
 
 func (b Bootstrap) commandContext(ctx context.Context) (context.Context, context.CancelFunc) {
@@ -47,18 +50,19 @@ func (b Bootstrap) Plan(ctx context.Context, manifest model.Manifest, platform m
 			return nil, err
 		}
 		item := PlanItem{Package: pkg, Command: command}
-		if b.Runner != nil {
-			check, checkErr := platformexec.CheckCommand(platform, pkg)
-			if checkErr != nil {
-				return nil, checkErr
-			}
+		if b.Detector != nil {
 			checkCtx, cancel := b.commandContext(ctx)
-			result := b.Runner.Run(checkCtx, check)
+			result := b.Detector.Detect(checkCtx, pkg)
 			cancel()
-			if result.Err == nil {
+			item.Detection = result
+			switch result.Status {
+			case detection.StatusInstalled:
 				item.Skipped = true
-			} else if result.Output == "" {
-				return nil, fmt.Errorf("检查 %s 安装状态失败: %w", pkg.Name, result.Err)
+			case detection.StatusError:
+				if result.Err != nil {
+					return nil, fmt.Errorf("检查 %s 安装状态失败: %w", pkg.Name, result.Err)
+				}
+				return nil, fmt.Errorf("检查 %s 安装状态失败: %s", pkg.Name, result.Detail)
 			}
 		}
 		items = append(items, item)

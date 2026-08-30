@@ -91,6 +91,8 @@ func parseManifest(content string) (model.Manifest, error) {
 			current.CheckProgram = valueAfterColon(line)
 		case strings.HasPrefix(line, "check_args:"):
 			current.CheckArgs = listAfterColon(line)
+		case strings.HasPrefix(line, "check_paths:"):
+			current.CheckPaths = listAfterColon(line)
 		case strings.HasPrefix(line, "min_version:"):
 			minimum, err := strconv.Atoi(valueAfterColon(line))
 			if err != nil {
@@ -115,7 +117,14 @@ func listAfterColon(line string) []string {
 	items := strings.Split(value, ",")
 	result := make([]string, 0, len(items))
 	for _, item := range items {
-		result = append(result, strings.Trim(strings.TrimSpace(item), "\""))
+		item = strings.TrimSpace(item)
+		if strings.HasPrefix(item, "\"") && strings.HasSuffix(item, "\"") {
+			if unquoted, err := strconv.Unquote(item); err == nil {
+				result = append(result, unquoted)
+				continue
+			}
+		}
+		result = append(result, strings.Trim(item, "\""))
 	}
 	return result
 }

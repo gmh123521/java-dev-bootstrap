@@ -34,6 +34,7 @@ type Package struct {
 	DarwinID     string     `yaml:"darwin_id"`
 	CheckProgram string     `yaml:"check_program"`
 	CheckArgs    []string   `yaml:"check_args"`
+	CheckPaths   []string   `yaml:"check_paths"`
 	MinVersion   int        `yaml:"min_version"`
 }
 
