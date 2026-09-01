@@ -64,13 +64,10 @@ func (d PackageDetector) Detect(ctx context.Context, pkg model.Package) Result {
 	if managerResult.Err == nil {
 		return Result{Status: StatusInstalled, Source: manager, Detail: managerResult.Output}
 	}
-	if managerResult.Output != "" {
-		if commandError.Status == StatusError {
-			return commandError
-		}
-		if !isPackageMissingOutput(manager, managerResult.Output) {
-			return Result{Status: StatusError, Source: manager, Detail: managerResult.Output, Err: managerResult.Err}
-		}
+	if commandError.Status == StatusError {
+		return commandError
+	}
+	if isPackageMissingResult(manager, managerResult) {
 		if commandOutdated.Status == StatusOutdated {
 			return commandOutdated
 		}
@@ -79,7 +76,17 @@ func (d PackageDetector) Detect(ctx context.Context, pkg model.Package) Result {
 	if commandOutdated.Status == StatusOutdated {
 		return commandOutdated
 	}
-	return Result{Status: StatusError, Source: manager, Err: managerResult.Err}
+	return Result{Status: StatusError, Source: manager, Detail: managerResult.Output, Err: managerResult.Err}
+}
+
+func isPackageMissingResult(manager string, result ports.Result) bool {
+	if isPackageMissingOutput(manager, result.Output) {
+		return true
+	}
+	if manager != "winget" || result.Err == nil {
+		return false
+	}
+	return strings.Contains(strings.ToLower(result.Err.Error()), "0x8a150014")
 }
 
 func candidatePatterns(pattern string, current model.Platform) []string {

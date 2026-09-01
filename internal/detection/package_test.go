@@ -62,6 +62,20 @@ func TestPackageDetectorReportsMissingAfterAllChecks(t *testing.T) {
 	}
 }
 
+func TestPackageDetectorTreatsWingetNoApplicationCodeAsMissing(t *testing.T) {
+	pkg := model.Package{ID: "gradle", Manager: "winget", ManagerID: "Gradle.Gradle", CheckProgram: "gradle", CheckArgs: []string{"--version"}}
+	runner := packageRunner{results: map[string]ports.Result{
+		"gradle": {Err: exec.ErrNotFound},
+		"winget": {Err: errors.New("exit status 0x8a150014")},
+	}}
+
+	result := (PackageDetector{Runner: runner, Platform: model.PlatformWindows}).Detect(context.Background(), pkg)
+
+	if result.Status != StatusMissing {
+		t.Fatalf("winget 未找到应用的返回码应标记为缺失: %#v", result)
+	}
+}
+
 func TestPackageDetectorReportsErrorWhenManagerCannotRun(t *testing.T) {
 	pkg := model.Package{ID: "gradle", Manager: "winget", ManagerID: "Gradle.Gradle", CheckProgram: "gradle", CheckArgs: []string{"--version"}}
 	runner := packageRunner{results: map[string]ports.Result{
