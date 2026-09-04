@@ -19,10 +19,13 @@ type PlanItem struct {
 }
 
 type InstallReport struct {
-	Succeeded int
-	Skipped   int
-	Failed    int
-	Errors    []error
+	Succeeded          int
+	Skipped            int
+	Failed             int
+	Verified           int
+	VerificationFailed int
+	Errors             []error
+	VerificationErrors []error
 }
 
 type Bootstrap struct {
@@ -80,6 +83,9 @@ func (b Bootstrap) Install(ctx context.Context, items []PlanItem) error {
 	if report.Failed > 0 {
 		return report.Errors[0]
 	}
+	if report.VerificationFailed > 0 {
+		return report.VerificationErrors[0]
+	}
 	return nil
 }
 
@@ -109,6 +115,23 @@ func (b Bootstrap) InstallReport(ctx context.Context, items []PlanItem) InstallR
 			continue
 		}
 		report.Succeeded++
+		if b.Detector != nil {
+			checkCtx, checkCancel := b.commandContext(ctx)
+			verification := b.Detector.Detect(checkCtx, item.Package)
+			checkCancel()
+			if verification.Status == detection.StatusInstalled {
+				report.Verified++
+				continue
+			}
+			report.VerificationFailed++
+			if verification.Err != nil {
+				report.VerificationErrors = append(report.VerificationErrors, fmt.Errorf("复查 %s 失败: %w", item.Package.Name, verification.Err))
+			} else if verification.Detail != "" {
+				report.VerificationErrors = append(report.VerificationErrors, fmt.Errorf("复查 %s 失败: %s", item.Package.Name, verification.Detail))
+			} else {
+				report.VerificationErrors = append(report.VerificationErrors, fmt.Errorf("复查 %s 失败: 未检测到安装结果", item.Package.Name))
+			}
+		}
 	}
 	return report
 }
