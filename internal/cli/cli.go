@@ -196,11 +196,20 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		}
 		report := bootstrap.InstallReport(operationCtx, items)
 		fmt.Fprintf(out, "\n安装汇总：成功 %d，跳过 %d，失败 %d\n", report.Succeeded, report.Skipped, report.Failed)
+		if packageDetector != nil {
+			fmt.Fprintf(out, "安装后复查：通过 %d，失败 %d\n", report.Verified, report.VerificationFailed)
+		}
 		if report.Failed > 0 {
 			for _, installErr := range report.Errors {
 				fmt.Fprintln(errOut, "-", installErr)
 			}
 			return fmt.Errorf("有 %d 个软件安装失败", report.Failed)
+		}
+		if report.VerificationFailed > 0 {
+			for _, verificationErr := range report.VerificationErrors {
+				fmt.Fprintln(errOut, "-", verificationErr)
+			}
+			return fmt.Errorf("有 %d 个软件安装后复查失败", report.VerificationFailed)
 		}
 		return nil
 	case "doctor":
