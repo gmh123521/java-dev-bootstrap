@@ -132,6 +132,16 @@ func TestRunHelpContainsDryRunOption(t *testing.T) {
 	}
 }
 
+func TestRunHelpContainsJSONOption(t *testing.T) {
+	var output strings.Builder
+	if err := Run(context.Background(), nil, &output, &output); err != nil {
+		t.Fatalf("帮助命令失败: %v", err)
+	}
+	if !strings.Contains(output.String(), "--json") {
+		t.Fatalf("帮助缺少 --json: %s", output.String())
+	}
+}
+
 func TestPackageDetectorIsEnabledForInstallDryRun(t *testing.T) {
 	detector := packageDetectorFor("install", model.PlatformWindows, platform.ExecRunner{})
 	if detector == nil {

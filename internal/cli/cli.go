@@ -28,6 +28,7 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 	manifestPath := DefaultManifest
 	yes := false
 	dryRun := false
+	jsonOutput := false
 	profile := ""
 	logPath := "jdb.log"
 	timeout := 30 * time.Minute
@@ -38,6 +39,8 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 			yes = true
 		case "--dry-run":
 			dryRun = true
+		case "--json":
+			jsonOutput = true
 		case "--profile":
 			if i+1 >= len(args) {
 				return fmt.Errorf("--profile 后必须提供名称")
@@ -134,6 +137,14 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		if err != nil {
 			return err
 		}
+		if jsonOutput {
+			formatted, formatErr := formatPackagesJSON(packages)
+			if formatErr != nil {
+				return formatErr
+			}
+			fmt.Fprintln(out, formatted)
+			return nil
+		}
 		for _, pkg := range packages {
 			fmt.Fprintf(out, "- %s（%s）：%s\n", pkg.Name, pkg.ID, pkg.Description)
 		}
@@ -182,10 +193,22 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 			if !item.Skipped {
 				pending++
 			}
-			fmt.Fprintln(out, formatPlanItem(item))
+			if !jsonOutput {
+				fmt.Fprintln(out, formatPlanItem(item))
+			}
 		}
 		if command == "plan" || dryRun || pending == 0 {
+			if jsonOutput {
+				formatted, formatErr := formatPlanJSON(items)
+				if formatErr != nil {
+					return formatErr
+				}
+				fmt.Fprintln(out, formatted)
+			}
 			return nil
+		}
+		if jsonOutput && !yes {
+			return fmt.Errorf("JSON 模式执行真实安装必须同时使用 --yes")
 		}
 		if !yes {
 			fmt.Fprint(out, "\n继续安装？请输入 yes 确认：")
@@ -195,7 +218,15 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 			}
 		}
 		report := bootstrap.InstallReport(operationCtx, items)
-		fmt.Fprintf(out, "\n安装汇总：成功 %d，跳过 %d，失败 %d\n", report.Succeeded, report.Skipped, report.Failed)
+		if jsonOutput {
+			formatted, formatErr := formatInstallReportJSON(report)
+			if formatErr != nil {
+				return formatErr
+			}
+			fmt.Fprintln(out, formatted)
+		} else {
+			fmt.Fprintf(out, "\n安装汇总：成功 %d，跳过 %d，失败 %d\n", report.Succeeded, report.Skipped, report.Failed)
+		}
 		if packageDetector != nil {
 			fmt.Fprintf(out, "安装后复查：通过 %d，失败 %d\n", report.Verified, report.VerificationFailed)
 		}
@@ -352,5 +383,5 @@ func help(out io.Writer) error {
 }
 
 func helpText() string {
-	return "Java Dev Bootstrap\n\n用法：jdb <version|list|profiles|prerequisites|setup|plan|install|doctor> [--manifest 路径] [--profile 名称] [--yes] [--dry-run] [--log 路径]\n"
+	return "Java Dev Bootstrap\n\n用法：jdb <version|list|profiles|prerequisites|setup|plan|install|doctor> [--manifest 路径] [--profile 名称] [--yes] [--dry-run] [--json] [--log 路径]\n"
 }
