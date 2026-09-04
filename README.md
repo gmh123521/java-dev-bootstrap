@@ -10,6 +10,7 @@ Java Dev Bootstrap 是一个面向 Windows 和 macOS 的 Java 开发环境初始
 - Docker Desktop
 - Windows 使用 winget，macOS 使用 Homebrew
 - 支持 `list`、`plan`、`install`、`doctor`
+- 支持 `prerequisites` 检查 Windows 的 winget 或 macOS 的 Homebrew
 - 支持 `java-basic`、`spring-backend`、`java-fullstack` 三种开发环境预设
 - `plan` 会真实检测现有软件，只安装缺失项或升级版本过低的软件
 - 支持 `--dry-run` 纯预览、安装超时和中文日志
@@ -22,6 +23,7 @@ Java Dev Bootstrap 是一个面向 Windows 和 macOS 的 Java 开发环境初始
 jdb list
 jdb version
 jdb profiles
+jdb prerequisites
 jdb list --profile java-basic
 jdb plan
 jdb plan --profile spring-backend
@@ -37,6 +39,8 @@ jdb doctor
 IntelliJ IDEA 和 Docker Desktop 使用应用程序路径与包管理器记录检测。JetBrains 用户配置残留不会被当成已安装，单独存在 `docker` CLI 也不会被当成 Docker Desktop。
 
 `install` 默认会先检测已安装软件，再显示计划并要求输入 `yes`。`--yes` 只适合用户已经审阅清单后的自动化场景。
+
+`prerequisites` 只检查操作系统、处理器架构和当前平台的包管理器是否可用，不会安装软件，不会修改 PATH、注册表或其他系统配置。Windows 新电脑需要先具备 winget（由 Microsoft 应用安装程序提供）；macOS 新电脑需要先安装 Homebrew。前置条件检查通过后，再执行 `doctor`、`plan` 和 `install`。
 
 `plan` 会执行只读检测，但不会安装软件，整次检测最多运行 2 分钟；`install --dry-run` 只生成命令预览，不访问包管理器也不检查或安装软件。`--log` 可指定安装日志文件，默认写入当前目录的 `jdb.log`。一次完整安装默认最多运行 30 分钟，超时后会终止当前命令和后续安装并输出失败结果。
 

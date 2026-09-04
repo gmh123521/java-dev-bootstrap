@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 
@@ -69,6 +70,26 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 	if command == "profiles" {
 		for _, name := range service.ProfileNames() {
 			fmt.Fprintln(out, "-", name)
+		}
+		return nil
+	}
+	if command == "prerequisites" {
+		current, err := platform.Current()
+		if err != nil {
+			return err
+		}
+		items, err := platform.CheckPrerequisites(ctx, current, runtime.GOARCH, platform.ExecRunner{})
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(out, "前置条件：")
+		ready := true
+		for _, item := range items {
+			fmt.Fprintln(out, formatPrerequisite(item))
+			ready = ready && item.OK
+		}
+		if !ready {
+			return fmt.Errorf("前置条件不满足，请按提示处理后重试")
 		}
 		return nil
 	}
@@ -247,6 +268,18 @@ func formatDiagnostic(item detection.Diagnostic) string {
 	return result
 }
 
+func formatPrerequisite(item platform.PrerequisiteItem) string {
+	level := "失败"
+	if item.OK {
+		level = "正常"
+	}
+	result := fmt.Sprintf("- [%s] %s：%s", level, item.Name, item.Current)
+	if item.Suggestion != "" {
+		result += "；建议：" + item.Suggestion
+	}
+	return result
+}
+
 func managerDiagnostic(manager string, result ports.Result) detection.Diagnostic {
 	if result.Err != nil {
 		return detection.Diagnostic{
@@ -275,5 +308,5 @@ func help(out io.Writer) error {
 }
 
 func helpText() string {
-	return "Java Dev Bootstrap\n\n用法：jdb <version|list|profiles|plan|install|doctor> [--manifest 路径] [--profile 名称] [--yes] [--dry-run] [--log 路径]\n"
+	return "Java Dev Bootstrap\n\n用法：jdb <version|list|profiles|prerequisites|plan|install|doctor> [--manifest 路径] [--profile 名称] [--yes] [--dry-run] [--log 路径]\n"
 }

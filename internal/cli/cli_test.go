@@ -10,6 +10,7 @@ import (
 
 	"github.com/gmh123521/java-dev-bootstrap/internal/detection"
 	"github.com/gmh123521/java-dev-bootstrap/internal/model"
+	"github.com/gmh123521/java-dev-bootstrap/internal/platform"
 	"github.com/gmh123521/java-dev-bootstrap/internal/ports"
 	"github.com/gmh123521/java-dev-bootstrap/internal/service"
 )
@@ -19,9 +20,23 @@ func TestRunHelpContainsCommands(t *testing.T) {
 	if err := Run(context.Background(), nil, &output, &output); err != nil {
 		t.Fatalf("帮助命令失败: %v", err)
 	}
-	for _, command := range []string{"list", "plan", "install", "doctor"} {
+	for _, command := range []string{"list", "plan", "install", "doctor", "prerequisites"} {
 		if !strings.Contains(output.String(), command) {
 			t.Fatalf("帮助缺少命令 %q: %s", command, output.String())
+		}
+	}
+}
+
+func TestFormatPrerequisiteShowsFailureSuggestion(t *testing.T) {
+	item := platform.PrerequisiteItem{
+		Name:       "包管理器 winget",
+		Current:    "不可用",
+		Suggestion: "请安装 App Installer",
+	}
+	actual := formatPrerequisite(item)
+	for _, expected := range []string{"[失败]", "包管理器 winget", "不可用", "建议：请安装 App Installer"} {
+		if !strings.Contains(actual, expected) {
+			t.Fatalf("前置条件输出缺少 %q: %s", expected, actual)
 		}
 	}
 }
