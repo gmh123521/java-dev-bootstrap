@@ -132,6 +132,13 @@ func TestRunHelpContainsDryRunOption(t *testing.T) {
 	}
 }
 
+func TestPackageDetectorIsEnabledForInstallDryRun(t *testing.T) {
+	detector := packageDetectorFor("install", model.PlatformWindows, platform.ExecRunner{})
+	if detector == nil {
+		t.Fatal("install --dry-run 应执行只读软件检测")
+	}
+}
+
 func TestRunDryRunDoesNotAskForConfirmation(t *testing.T) {
 	if runtime.GOOS != "windows" && runtime.GOOS != "darwin" {
 		t.Skip("dry-run 的平台执行测试只在产品支持的平台运行")

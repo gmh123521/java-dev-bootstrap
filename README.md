@@ -46,7 +46,7 @@ IntelliJ IDEA 和 Docker Desktop 使用应用程序路径与包管理器记录�
 
 `setup` 是面向新电脑的引导命令。它会检查当前平台和包管理器是否准备好，并在缺失时给出安装或修复建议；它不会执行 `sudo`，不会自动安装 winget 或 Homebrew，也不会修改 PATH、注册表及其他系统配置。处理建议完成后重新执行 `jdb prerequisites`，检查通过再执行 `jdb doctor`。
 
-`plan` 会执行只读检测，但不会安装软件，整次检测最多运行 2 分钟；`install --dry-run` 只生成命令预览，不访问包管理器也不检查或安装软件。`--log` 可指定安装日志文件，默认写入当前目录的 `jdb.log`。一次完整安装默认最多运行 30 分钟，超时后会终止当前命令和后续安装并输出失败结果。
+`plan` 会执行只读检测，但不会安装软件，整次检测最多运行 2 分钟；`install --dry-run` 会执行同样的只读软件检测并生成命令预览，不会调用包管理器安装或修改系统。`--log` 可指定安装日志文件，默认写入当前目录的 `jdb.log`。一次完整安装默认最多运行 30 分钟，超时后会终止当前命令和后续安装并输出失败结果。
 
 profile 说明：`java-basic` 适合基础 Java 开发；`spring-backend` 在基础环境上增加 Docker；`java-fullstack` 再增加 Visual Studio Code。不指定 profile 时使用清单中的全部软件。
 

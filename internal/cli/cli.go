@@ -152,13 +152,12 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 			runner = logging.Runner{Inner: platform.ExecRunner{}, Logger: logging.New(logFile)}
 			detectionRunner = runner
 		}
-		if !dryRun {
-			packageDetector = detection.PackageDetector{Runner: detectionRunner, Platform: current}
-		}
+		packageDetector = packageDetectorFor(command, current, detectionRunner)
 		bootstrap := service.Bootstrap{
-			Runner:   runner,
-			Detector: packageDetector,
-			Timeout:  timeout,
+			Runner:                runner,
+			Detector:              packageDetector,
+			Timeout:               timeout,
+			IgnoreDetectionErrors: command == "install" && dryRun,
 		}
 		operationCtx, operationCancel := operationContext(ctx, command, dryRun, timeout)
 		defer operationCancel()
@@ -293,6 +292,13 @@ func formatPrerequisite(item platform.PrerequisiteItem) string {
 		result += "；建议：" + item.Suggestion
 	}
 	return result
+}
+
+func packageDetectorFor(command string, current model.Platform, runner ports.Runner) detection.Detector {
+	if (command != "plan" && command != "install") || runner == nil {
+		return nil
+	}
+	return detection.PackageDetector{Runner: runner, Platform: current}
 }
 
 func formatSetupGuide(guide platform.SetupResult) string {
