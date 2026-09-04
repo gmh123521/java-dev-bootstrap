@@ -93,6 +93,21 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		}
 		return nil
 	}
+	if command == "setup" {
+		current, err := platform.Current()
+		if err != nil {
+			return err
+		}
+		guide, err := platform.SetupGuide(ctx, current, runtime.GOARCH, platform.ExecRunner{})
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(out, formatSetupGuide(guide))
+		if !guide.Ready {
+			return fmt.Errorf("前置条件不满足，请按提示处理后重试")
+		}
+		return nil
+	}
 	var manifest model.Manifest
 	var err error
 	if manifestPath == DefaultManifest {
@@ -280,6 +295,20 @@ func formatPrerequisite(item platform.PrerequisiteItem) string {
 	return result
 }
 
+func formatSetupGuide(guide platform.SetupResult) string {
+	var builder strings.Builder
+	builder.WriteString("准备检查：\n")
+	fmt.Fprintf(&builder, "- 平台：%s\n", guide.Platform)
+	fmt.Fprintf(&builder, "- 包管理器 %s：%s\n", guide.Manager, guide.ManagerState)
+	if guide.Ready {
+		fmt.Fprintf(&builder, "- 下一步：%s", guide.NextCommand)
+	} else {
+		fmt.Fprintf(&builder, "- 建议：%s\n", guide.Suggestion)
+		fmt.Fprintf(&builder, "- 处理后执行：%s", guide.NextCommand)
+	}
+	return builder.String()
+}
+
 func managerDiagnostic(manager string, result ports.Result) detection.Diagnostic {
 	if result.Err != nil {
 		return detection.Diagnostic{
@@ -308,5 +337,5 @@ func help(out io.Writer) error {
 }
 
 func helpText() string {
-	return "Java Dev Bootstrap\n\n用法：jdb <version|list|profiles|prerequisites|plan|install|doctor> [--manifest 路径] [--profile 名称] [--yes] [--dry-run] [--log 路径]\n"
+	return "Java Dev Bootstrap\n\n用法：jdb <version|list|profiles|prerequisites|setup|plan|install|doctor> [--manifest 路径] [--profile 名称] [--yes] [--dry-run] [--log 路径]\n"
 }
