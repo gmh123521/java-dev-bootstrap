@@ -48,3 +48,16 @@ func TestPlanKeepsMissingPackagePending(t *testing.T) {
 		t.Fatalf("未安装软件应保留待安装状态: %#v", items)
 	}
 }
+
+func TestPlanKeepsDetectionErrorInReadOnlyPreview(t *testing.T) {
+	manifest := model.Manifest{Version: 1, Packages: []model.Package{{ID: "gradle", Name: "Gradle", Platforms: []model.Platform{model.PlatformWindows}, Manager: "winget", ManagerID: "Gradle.Gradle"}}}
+	detector := fakeDetector{result: detection.Result{Status: detection.StatusError, Detail: "包管理器不可用"}}
+
+	items, err := (Bootstrap{Detector: detector, IgnoreDetectionErrors: true}).Plan(context.Background(), manifest, model.PlatformWindows)
+	if err != nil {
+		t.Fatalf("只读预览不应因单项检测失败而中止: %v", err)
+	}
+	if len(items) != 1 || items[0].Skipped || items[0].Detection.Status != detection.StatusError {
+		t.Fatalf("应保留检测失败项目并继续显示: %#v", items)
+	}
+}

@@ -26,9 +26,10 @@ type InstallReport struct {
 }
 
 type Bootstrap struct {
-	Runner   ports.Runner
-	Detector detection.Detector
-	Timeout  time.Duration
+	Runner                ports.Runner
+	Detector              detection.Detector
+	Timeout               time.Duration
+	IgnoreDetectionErrors bool
 }
 
 func (b Bootstrap) commandContext(ctx context.Context) (context.Context, context.CancelFunc) {
@@ -59,6 +60,10 @@ func (b Bootstrap) Plan(ctx context.Context, manifest model.Manifest, platform m
 			case detection.StatusInstalled:
 				item.Skipped = true
 			case detection.StatusError:
+				if b.IgnoreDetectionErrors {
+					items = append(items, item)
+					continue
+				}
 				if result.Err != nil {
 					return nil, fmt.Errorf("检查 %s 安装状态失败: %w", pkg.Name, result.Err)
 				}
