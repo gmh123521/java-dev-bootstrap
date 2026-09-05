@@ -79,11 +79,28 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 	}
 	// 版本和 profile 列表不依赖操作系统，允许在 Linux CI 等环境中执行。
 	if command == "version" {
+		if jsonOutput {
+			formatted, formatErr := formatVersionJSON(version.Display())
+			if formatErr != nil {
+				return formatErr
+			}
+			fmt.Fprintln(out, formatted)
+			return nil
+		}
 		fmt.Fprintf(out, "版本：%s\n", version.Display())
 		return nil
 	}
 	if command == "profiles" {
-		for _, name := range service.ProfileNames() {
+		names := service.ProfileNames()
+		if jsonOutput {
+			formatted, formatErr := formatProfilesJSON(names)
+			if formatErr != nil {
+				return formatErr
+			}
+			fmt.Fprintln(out, formatted)
+			return nil
+		}
+		for _, name := range names {
 			fmt.Fprintln(out, "-", name)
 		}
 		return nil

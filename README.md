@@ -40,6 +40,8 @@ jdb install --profile java-basic --dry-run --json
 jdb prerequisites --json
 jdb setup --json
 jdb doctor --json
+jdb version --json
+jdb profiles --json
 jdb install --profile java-basic --retry 2
 jdb install --log 安装日志.txt
 jdb doctor
@@ -59,7 +61,7 @@ IntelliJ IDEA 和 Docker Desktop 使用应用程序路径与包管理器记录�
 
 `plan` 会执行只读检测，但不会安装软件，整次检测最多运行 2 分钟；`install --dry-run` 会执行同样的只读软件检测并生成命令预览，不会调用包管理器安装或修改系统。`--log` 可指定安装日志文件，默认写入当前目录的 `jdb.log`。一次完整安装默认最多运行 30 分钟，超时后会终止当前命令和后续安装并输出失败结果。
 
-`--json` 可用于 `list`、`plan`、`install --dry-run`、配合 `--yes` 的真实 `install`，以及 `prerequisites`、`setup` 和 `doctor`。JSON 模式只输出机器可解析的 JSON；真实安装使用 `--json` 时必须同时使用 `--yes`，避免交互确认提示混入 JSON 输出。
+`--json` 可用于 `version`、`profiles`、`list`、`plan`、`install --dry-run`、配合 `--yes` 的真实 `install`，以及 `prerequisites`、`setup` 和 `doctor`。JSON 模式只输出机器可解析的 JSON；真实安装使用 `--json` 时必须同时使用 `--yes`，避免交互确认提示混入 JSON 输出。
 
 真实安装可以使用 `--retry 次数` 设置每个失败项目的额外重试次数，默认不重试。重试只针对当前失败项目，已经成功或跳过的项目不会重复执行；最终仍失败时才计入失败汇总。
 
