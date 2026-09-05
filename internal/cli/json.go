@@ -3,7 +3,9 @@ package cli
 import (
 	"encoding/json"
 
+	"github.com/gmh123521/java-dev-bootstrap/internal/detection"
 	"github.com/gmh123521/java-dev-bootstrap/internal/model"
+	"github.com/gmh123521/java-dev-bootstrap/internal/platform"
 	"github.com/gmh123521/java-dev-bootstrap/internal/service"
 )
 
@@ -44,6 +46,30 @@ type jsonInstallReport struct {
 	VerificationFailed int      `json:"verification_failed"`
 	Errors             []string `json:"errors,omitempty"`
 	VerificationErrors []string `json:"verification_errors,omitempty"`
+}
+
+type jsonDiagnostic struct {
+	Level      string `json:"level"`
+	Name       string `json:"name"`
+	Current    string `json:"current"`
+	Suggestion string `json:"suggestion,omitempty"`
+}
+
+type jsonPrerequisite struct {
+	Name       string `json:"name"`
+	Current    string `json:"current"`
+	Suggestion string `json:"suggestion,omitempty"`
+	OK         bool   `json:"ok"`
+}
+
+type jsonSetup struct {
+	Ready        bool   `json:"ready"`
+	Platform     string `json:"platform"`
+	Architecture string `json:"architecture"`
+	Manager      string `json:"manager"`
+	ManagerState string `json:"manager_state"`
+	Suggestion   string `json:"suggestion,omitempty"`
+	NextCommand  string `json:"next_command"`
 }
 
 func formatPackagesJSON(packages []model.Package) (string, error) {
@@ -88,6 +114,34 @@ func formatInstallReportJSON(report service.InstallReport) (string, error) {
 		VerificationFailed: report.VerificationFailed,
 		Errors:             errorStrings(report.Errors),
 		VerificationErrors: errorStrings(report.VerificationErrors),
+	})
+}
+
+func formatDiagnosticsJSON(items []detection.Diagnostic) (string, error) {
+	output := make([]jsonDiagnostic, 0, len(items))
+	for _, item := range items {
+		output = append(output, jsonDiagnostic{Level: string(item.Level), Name: item.Name, Current: item.Current, Suggestion: item.Suggestion})
+	}
+	return marshalJSON(output)
+}
+
+func formatPrerequisitesJSON(items []platform.PrerequisiteItem) (string, error) {
+	output := make([]jsonPrerequisite, 0, len(items))
+	for _, item := range items {
+		output = append(output, jsonPrerequisite{Name: item.Name, Current: item.Current, Suggestion: item.Suggestion, OK: item.OK})
+	}
+	return marshalJSON(output)
+}
+
+func formatSetupJSON(result platform.SetupResult) (string, error) {
+	return marshalJSON(jsonSetup{
+		Ready:        result.Ready,
+		Platform:     result.Platform,
+		Architecture: result.Architecture,
+		Manager:      result.Manager,
+		ManagerState: result.ManagerState,
+		Suggestion:   result.Suggestion,
+		NextCommand:  result.NextCommand,
 	})
 }
 
