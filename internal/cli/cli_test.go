@@ -192,6 +192,27 @@ func TestRunRejectsInvalidRetry(t *testing.T) {
 	}
 }
 
+func TestRunRejectsOptionsForWrongCommand(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{name: "version 不支持 yes", args: []string{"version", "--yes"}},
+		{name: "list 不支持 dry-run", args: []string{"list", "--dry-run"}},
+		{name: "plan 不支持 retry", args: []string{"plan", "--retry", "2"}},
+		{name: "doctor 不支持 log", args: []string{"doctor", "--log", "doctor.log"}},
+		{name: "setup 不支持 manifest", args: []string{"setup", "--manifest", "custom.yaml"}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var output strings.Builder
+			if err := Run(context.Background(), test.args, &output, &output); err == nil {
+				t.Fatalf("参数应被拒绝: %v", test.args)
+			}
+		})
+	}
+}
+
 func TestPackageDetectorIsEnabledForInstallDryRun(t *testing.T) {
 	detector := packageDetectorFor("install", model.PlatformWindows, platform.ExecRunner{})
 	if detector == nil {

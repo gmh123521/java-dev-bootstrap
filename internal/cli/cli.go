@@ -31,8 +31,12 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 	dryRun := false
 	jsonOutput := false
 	retry := 0
+	retrySpecified := false
 	profile := ""
+	profileSpecified := false
 	logPath := "jdb.log"
+	logSpecified := false
+	manifestSpecified := false
 	timeout := 30 * time.Minute
 	command := args[0]
 	for i := 1; i < len(args); i++ {
@@ -52,30 +56,37 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 				return fmt.Errorf("--retry 后必须提供非负整数")
 			}
 			retry = parsedRetry
+			retrySpecified = true
 			i++
 		case "--profile":
 			if i+1 >= len(args) {
 				return fmt.Errorf("--profile 后必须提供名称")
 			}
 			profile = args[i+1]
+			profileSpecified = true
 			i++
 		case "--log":
 			if i+1 >= len(args) {
 				return fmt.Errorf("--log 后必须提供文件路径")
 			}
 			logPath = args[i+1]
+			logSpecified = true
 			i++
 		case "--manifest":
 			if i+1 >= len(args) {
 				return fmt.Errorf("--manifest 后必须提供文件路径")
 			}
 			manifestPath = args[i+1]
+			manifestSpecified = true
 			i++
 		case "--help", "-h":
 			return help(out)
 		default:
 			return fmt.Errorf("未知参数: %s", args[i])
 		}
+	}
+	if err := validateOptions(command, yes, dryRun, retrySpecified, logSpecified, profileSpecified, manifestSpecified); err != nil {
+		return err
 	}
 	// 版本和 profile 列表不依赖操作系统，允许在 Linux CI 等环境中执行。
 	if command == "version" {
@@ -337,6 +348,28 @@ func allPrerequisitesReady(items []platform.PrerequisiteItem) bool {
 		}
 	}
 	return true
+}
+
+func validateOptions(command string, yes, dryRun, retrySpecified, logSpecified, profileSpecified, manifestSpecified bool) error {
+	if command != "install" && yes {
+		return fmt.Errorf("命令 %s 不支持 --yes", command)
+	}
+	if command != "install" && dryRun {
+		return fmt.Errorf("命令 %s 不支持 --dry-run", command)
+	}
+	if command != "install" && retrySpecified {
+		return fmt.Errorf("命令 %s 不支持 --retry", command)
+	}
+	if command != "install" && logSpecified {
+		return fmt.Errorf("命令 %s 不支持 --log", command)
+	}
+	if (command == "version" || command == "profiles" || command == "prerequisites" || command == "setup") && profileSpecified {
+		return fmt.Errorf("命令 %s 不支持 --profile", command)
+	}
+	if (command == "version" || command == "profiles" || command == "prerequisites" || command == "setup") && manifestSpecified {
+		return fmt.Errorf("命令 %s 不支持 --manifest", command)
+	}
+	return nil
 }
 
 func formatCommand(command ports.Command) string {

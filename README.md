@@ -63,6 +63,8 @@ IntelliJ IDEA 和 Docker Desktop 使用应用程序路径与包管理器记录�
 
 `--json` 可用于 `version`、`profiles`、`list`、`plan`、`install --dry-run`、配合 `--yes` 的真实 `install`，以及 `prerequisites`、`setup` 和 `doctor`。JSON 模式只输出机器可解析的 JSON；真实安装使用 `--json` 时必须同时使用 `--yes`，避免交互确认提示混入 JSON 输出。
 
+命令参数会按命令校验：`--yes`、`--dry-run`、`--retry` 和 `--log` 只用于 `install`；`--profile` 和 `--manifest` 可用于需要软件清单的命令，不适用于 `version`、`profiles`、`prerequisites` 和 `setup`。不支持的组合会立即报错，不会执行系统检测或安装。
+
 真实安装可以使用 `--retry 次数` 设置每个失败项目的额外重试次数，默认不重试。重试只针对当前失败项目，已经成功或跳过的项目不会重复执行；最终仍失败时才计入失败汇总。
 
 profile 说明：`java-basic` 适合基础 Java 开发；`spring-backend` 在基础环境上增加 Docker；`java-fullstack` 再增加 Visual Studio Code。不指定 profile 时使用清单中的全部软件。
