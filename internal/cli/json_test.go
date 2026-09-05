@@ -39,11 +39,11 @@ func TestFormatPlanJSONIncludesDetectionAndCommand(t *testing.T) {
 }
 
 func TestFormatInstallReportJSONIncludesVerification(t *testing.T) {
-	actual, err := formatInstallReportJSON(service.InstallReport{Succeeded: 1, Skipped: 2, Failed: 0, Verified: 1, VerificationFailed: 0})
+	actual, err := formatInstallReportJSON(service.InstallReport{Succeeded: 1, Skipped: 2, Failed: 0, Retried: 1, Verified: 1, VerificationFailed: 0})
 	if err != nil {
 		t.Fatalf("生成安装报告 JSON 失败: %v", err)
 	}
-	for _, expected := range []string{"\"succeeded\": 1", "\"skipped\": 2", "\"verified\": 1", "\"verification_failed\": 0"} {
+	for _, expected := range []string{"\"succeeded\": 1", "\"skipped\": 2", "\"retried\": 1", "\"verified\": 1", "\"verification_failed\": 0"} {
 		if !strings.Contains(actual, expected) {
 			t.Fatalf("安装报告 JSON 缺少 %q: %s", expected, actual)
 		}

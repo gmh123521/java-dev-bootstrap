@@ -142,6 +142,13 @@ func TestRunHelpContainsJSONOption(t *testing.T) {
 	}
 }
 
+func TestRunRejectsInvalidRetry(t *testing.T) {
+	var output strings.Builder
+	if err := Run(context.Background(), []string{"version", "--retry", "-1"}, &output, &output); err == nil {
+		t.Fatal("负数重试次数应被拒绝")
+	}
+}
+
 func TestPackageDetectorIsEnabledForInstallDryRun(t *testing.T) {
 	detector := packageDetectorFor("install", model.PlatformWindows, platform.ExecRunner{})
 	if detector == nil {

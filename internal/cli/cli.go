@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -29,6 +30,7 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 	yes := false
 	dryRun := false
 	jsonOutput := false
+	retry := 0
 	profile := ""
 	logPath := "jdb.log"
 	timeout := 30 * time.Minute
@@ -41,6 +43,16 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 			dryRun = true
 		case "--json":
 			jsonOutput = true
+		case "--retry":
+			if i+1 >= len(args) {
+				return fmt.Errorf("--retry 后必须提供非负整数")
+			}
+			parsedRetry, parseErr := strconv.Atoi(args[i+1])
+			if parseErr != nil || parsedRetry < 0 {
+				return fmt.Errorf("--retry 后必须提供非负整数")
+			}
+			retry = parsedRetry
+			i++
 		case "--profile":
 			if i+1 >= len(args) {
 				return fmt.Errorf("--profile 后必须提供名称")
@@ -168,6 +180,7 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 			Runner:                runner,
 			Detector:              packageDetector,
 			Timeout:               timeout,
+			Retry:                 retry,
 			IgnoreDetectionErrors: command == "install" && dryRun,
 		}
 		operationCtx, operationCancel := operationContext(ctx, command, dryRun, timeout)
@@ -225,7 +238,7 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 			}
 			fmt.Fprintln(out, formatted)
 		} else {
-			fmt.Fprintf(out, "\n安装汇总：成功 %d，跳过 %d，失败 %d\n", report.Succeeded, report.Skipped, report.Failed)
+			fmt.Fprintf(out, "\n安装汇总：成功 %d，跳过 %d，失败 %d，重试 %d\n", report.Succeeded, report.Skipped, report.Failed, report.Retried)
 		}
 		if packageDetector != nil {
 			fmt.Fprintf(out, "安装后复查：通过 %d，失败 %d\n", report.Verified, report.VerificationFailed)
@@ -383,5 +396,5 @@ func help(out io.Writer) error {
 }
 
 func helpText() string {
-	return "Java Dev Bootstrap\n\n用法：jdb <version|list|profiles|prerequisites|setup|plan|install|doctor> [--manifest 路径] [--profile 名称] [--yes] [--dry-run] [--json] [--log 路径]\n"
+	return "Java Dev Bootstrap\n\n用法：jdb <version|list|profiles|prerequisites|setup|plan|install|doctor> [--manifest 路径] [--profile 名称] [--yes] [--dry-run] [--json] [--retry 次数] [--log 路径]\n"
 }

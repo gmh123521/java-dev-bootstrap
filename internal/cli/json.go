@@ -39,6 +39,7 @@ type jsonInstallReport struct {
 	Succeeded          int      `json:"succeeded"`
 	Skipped            int      `json:"skipped"`
 	Failed             int      `json:"failed"`
+	Retried            int      `json:"retried"`
 	Verified           int      `json:"verified"`
 	VerificationFailed int      `json:"verification_failed"`
 	Errors             []string `json:"errors,omitempty"`
@@ -82,6 +83,7 @@ func formatInstallReportJSON(report service.InstallReport) (string, error) {
 		Succeeded:          report.Succeeded,
 		Skipped:            report.Skipped,
 		Failed:             report.Failed,
+		Retried:            report.Retried,
 		Verified:           report.Verified,
 		VerificationFailed: report.VerificationFailed,
 		Errors:             errorStrings(report.Errors),
