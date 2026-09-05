@@ -157,6 +157,34 @@ func TestRunListJSONIsMachineReadable(t *testing.T) {
 	}
 }
 
+func TestRunVersionJSONIsMachineReadable(t *testing.T) {
+	var output strings.Builder
+	if err := Run(context.Background(), []string{"version", "--json"}, &output, &output); err != nil {
+		t.Fatalf("version JSON 命令失败: %v", err)
+	}
+	var value map[string]string
+	if err := json.Unmarshal([]byte(output.String()), &value); err != nil {
+		t.Fatalf("version JSON 输出不可解析: %v; 输出: %s", err, output.String())
+	}
+	if value["version"] == "" {
+		t.Fatal("version JSON 应包含非空版本号")
+	}
+}
+
+func TestRunProfilesJSONIsMachineReadable(t *testing.T) {
+	var output strings.Builder
+	if err := Run(context.Background(), []string{"profiles", "--json"}, &output, &output); err != nil {
+		t.Fatalf("profiles JSON 命令失败: %v", err)
+	}
+	var value []string
+	if err := json.Unmarshal([]byte(output.String()), &value); err != nil {
+		t.Fatalf("profiles JSON 输出不可解析: %v; 输出: %s", err, output.String())
+	}
+	if len(value) == 0 {
+		t.Fatal("profiles JSON 应至少返回一个预设")
+	}
+}
+
 func TestRunRejectsInvalidRetry(t *testing.T) {
 	var output strings.Builder
 	if err := Run(context.Background(), []string{"version", "--retry", "-1"}, &output, &output); err == nil {

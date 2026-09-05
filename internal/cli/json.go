@@ -72,6 +72,10 @@ type jsonSetup struct {
 	NextCommand  string `json:"next_command"`
 }
 
+type jsonVersion struct {
+	Version string `json:"version"`
+}
+
 func formatPackagesJSON(packages []model.Package) (string, error) {
 	items := make([]jsonPackage, 0, len(packages))
 	for _, pkg := range packages {
@@ -143,6 +147,14 @@ func formatSetupJSON(result platform.SetupResult) (string, error) {
 		Suggestion:   result.Suggestion,
 		NextCommand:  result.NextCommand,
 	})
+}
+
+func formatVersionJSON(value string) (string, error) {
+	return marshalJSON(jsonVersion{Version: value})
+}
+
+func formatProfilesJSON(names []string) (string, error) {
+	return marshalJSON(names)
 }
 
 func errorStrings(errors []error) []string {
