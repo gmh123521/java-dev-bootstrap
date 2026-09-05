@@ -20,6 +20,18 @@ func (r reportRunner) Run(_ context.Context, command ports.Command) ports.Result
 	return ports.Result{Command: command}
 }
 
+type flakyReportRunner struct {
+	attempts int
+}
+
+func (r *flakyReportRunner) Run(_ context.Context, command ports.Command) ports.Result {
+	r.attempts++
+	if r.attempts == 1 {
+		return ports.Result{Command: command, Err: errors.New("第一次执行失败")}
+	}
+	return ports.Result{Command: command}
+}
+
 func TestInstallReportContinuesAfterFailure(t *testing.T) {
 	items := []PlanItem{
 		{Package: model.Package{ID: "one", Name: "第一个"}, Command: ports.Command{Program: "one"}},
@@ -68,5 +80,23 @@ func TestInstallReturnsVerificationFailure(t *testing.T) {
 	detector := &sequenceDetector{results: []detection.Result{{Status: detection.StatusMissing, Detail: "仍未检测到"}}}
 	if err := (Bootstrap{Runner: reportRunner{}, Detector: detector}).Install(context.Background(), items); err == nil || !strings.Contains(err.Error(), "复查 Gradle 失败") {
 		t.Fatalf("Install 应返回复查错误: %v", err)
+	}
+}
+
+func TestInstallReportRetriesFailedInstall(t *testing.T) {
+	items := []PlanItem{{Package: model.Package{ID: "gradle", Name: "Gradle"}, Command: ports.Command{Program: "gradle"}}}
+	runner := &flakyReportRunner{}
+	report := (Bootstrap{Runner: runner, Retry: 1}).InstallReport(context.Background(), items)
+	if runner.attempts != 2 || report.Succeeded != 1 || report.Failed != 0 || report.Retried != 1 {
+		t.Fatalf("失败安装应按配置重试并成功: attempts=%d report=%#v", runner.attempts, report)
+	}
+}
+
+func TestInstallReportStopsAfterRetryLimit(t *testing.T) {
+	items := []PlanItem{{Package: model.Package{ID: "gradle", Name: "Gradle"}, Command: ports.Command{Program: "gradle"}}}
+	runner := reportRunner{failures: map[string]error{"gradle": errors.New("持续失败")}}
+	report := (Bootstrap{Runner: runner, Retry: 2}).InstallReport(context.Background(), items)
+	if report.Succeeded != 0 || report.Failed != 1 || report.Retried != 2 || len(report.Errors) != 1 {
+		t.Fatalf("达到重试上限后应保留最终失败: %#v", report)
 	}
 }

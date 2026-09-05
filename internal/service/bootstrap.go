@@ -22,6 +22,7 @@ type InstallReport struct {
 	Succeeded          int
 	Skipped            int
 	Failed             int
+	Retried            int
 	Verified           int
 	VerificationFailed int
 	Errors             []error
@@ -32,6 +33,7 @@ type Bootstrap struct {
 	Runner                ports.Runner
 	Detector              detection.Detector
 	Timeout               time.Duration
+	Retry                 int
 	IgnoreDetectionErrors bool
 }
 
@@ -106,12 +108,26 @@ func (b Bootstrap) InstallReport(ctx context.Context, items []PlanItem) InstallR
 			report.Errors = append(report.Errors, fmt.Errorf("未配置命令执行器"))
 			continue
 		}
-		commandCtx, cancel := b.commandContext(ctx)
-		result := b.Runner.Run(commandCtx, item.Command)
-		cancel()
-		if result.Err != nil {
+		attempts := b.Retry
+		if attempts < 0 {
+			attempts = 0
+		}
+		var result ports.Result
+		for attempt := 0; attempt <= attempts; attempt++ {
+			commandCtx, cancel := b.commandContext(ctx)
+			result = b.Runner.Run(commandCtx, item.Command)
+			cancel()
+			if result.Err == nil {
+				break
+			}
+			if attempt < attempts {
+				report.Retried++
+				continue
+			}
 			report.Failed++
 			report.Errors = append(report.Errors, fmt.Errorf("安装 %s 失败: %w\n%s", item.Package.Name, result.Err, result.Output))
+		}
+		if result.Err != nil {
 			continue
 		}
 		report.Succeeded++
