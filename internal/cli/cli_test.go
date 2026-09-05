@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"runtime"
 	"strings"
@@ -139,6 +140,20 @@ func TestRunHelpContainsJSONOption(t *testing.T) {
 	}
 	if !strings.Contains(output.String(), "--json") {
 		t.Fatalf("帮助缺少 --json: %s", output.String())
+	}
+}
+
+func TestRunListJSONIsMachineReadable(t *testing.T) {
+	var output strings.Builder
+	if err := Run(context.Background(), []string{"list", "--json"}, &output, &output); err != nil {
+		t.Fatalf("list JSON 命令失败: %v", err)
+	}
+	var value []map[string]any
+	if err := json.Unmarshal([]byte(output.String()), &value); err != nil {
+		t.Fatalf("list JSON 输出不可解析: %v; 输出: %s", err, output.String())
+	}
+	if len(value) == 0 {
+		t.Fatal("list JSON 应至少返回一项软件清单")
 	}
 }
 

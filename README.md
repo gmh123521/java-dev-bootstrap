@@ -15,7 +15,7 @@ Java Dev Bootstrap 是一个面向 Windows 和 macOS 的 Java 开发环境初始
 - 支持 `java-basic`、`spring-backend`、`java-fullstack` 三种开发环境预设
 - `plan` 会真实检测现有软件，只安装缺失项或升级版本过低的软件
 - 支持 `--dry-run` 纯预览、安装超时和中文日志
-- 支持 `--json` 输出软件清单、安装计划和安装报告
+- 支持 `--json` 输出软件清单、安装计划、安装报告和环境诊断结果
 - 支持 `--retry 次数` 对失败安装逐项重试
 - `doctor` 会诊断 Java、常用工具命令和环境变量
 - 默认内置清单，也可以通过 `--manifest` 使用自定义清单
@@ -37,6 +37,9 @@ jdb install --dry-run
 jdb list --json
 jdb plan --profile java-basic --json
 jdb install --profile java-basic --dry-run --json
+jdb prerequisites --json
+jdb setup --json
+jdb doctor --json
 jdb install --profile java-basic --retry 2
 jdb install --log 安装日志.txt
 jdb doctor
@@ -56,7 +59,7 @@ IntelliJ IDEA 和 Docker Desktop 使用应用程序路径与包管理器记录�
 
 `plan` 会执行只读检测，但不会安装软件，整次检测最多运行 2 分钟；`install --dry-run` 会执行同样的只读软件检测并生成命令预览，不会调用包管理器安装或修改系统。`--log` 可指定安装日志文件，默认写入当前目录的 `jdb.log`。一次完整安装默认最多运行 30 分钟，超时后会终止当前命令和后续安装并输出失败结果。
 
-`--json` 可用于 `list`、`plan`、`install --dry-run` 和配合 `--yes` 的真实 `install`。JSON 模式只输出机器可解析的 JSON；真实安装使用 `--json` 时必须同时使用 `--yes`，避免交互确认提示混入 JSON 输出。
+`--json` 可用于 `list`、`plan`、`install --dry-run`、配合 `--yes` 的真实 `install`，以及 `prerequisites`、`setup` 和 `doctor`。JSON 模式只输出机器可解析的 JSON；真实安装使用 `--json` 时必须同时使用 `--yes`，避免交互确认提示混入 JSON 输出。
 
 真实安装可以使用 `--retry 次数` 设置每个失败项目的额外重试次数，默认不重试。重试只针对当前失败项目，已经成功或跳过的项目不会重复执行；最终仍失败时才计入失败汇总。
 

@@ -97,13 +97,22 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		if err != nil {
 			return err
 		}
+		if jsonOutput {
+			formatted, formatErr := formatPrerequisitesJSON(items)
+			if formatErr != nil {
+				return formatErr
+			}
+			fmt.Fprintln(out, formatted)
+			if !allPrerequisitesReady(items) {
+				return fmt.Errorf("前置条件不满足，请按提示处理后重试")
+			}
+			return nil
+		}
 		fmt.Fprintln(out, "前置条件：")
-		ready := true
 		for _, item := range items {
 			fmt.Fprintln(out, formatPrerequisite(item))
-			ready = ready && item.OK
 		}
-		if !ready {
+		if !allPrerequisitesReady(items) {
 			return fmt.Errorf("前置条件不满足，请按提示处理后重试")
 		}
 		return nil
@@ -116,6 +125,17 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		guide, err := platform.SetupGuide(ctx, current, runtime.GOARCH, platform.ExecRunner{})
 		if err != nil {
 			return err
+		}
+		if jsonOutput {
+			formatted, formatErr := formatSetupJSON(guide)
+			if formatErr != nil {
+				return formatErr
+			}
+			fmt.Fprintln(out, formatted)
+			if !guide.Ready {
+				return fmt.Errorf("前置条件不满足，请按提示处理后重试")
+			}
+			return nil
 		}
 		fmt.Fprintln(out, formatSetupGuide(guide))
 		if !guide.Ready {
@@ -240,7 +260,7 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		} else {
 			fmt.Fprintf(out, "\n安装汇总：成功 %d，跳过 %d，失败 %d，重试 %d\n", report.Succeeded, report.Skipped, report.Failed, report.Retried)
 		}
-		if packageDetector != nil {
+		if packageDetector != nil && !jsonOutput {
 			fmt.Fprintf(out, "安装后复查：通过 %d，失败 %d\n", report.Verified, report.VerificationFailed)
 		}
 		if report.Failed > 0 {
@@ -268,14 +288,22 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 		doctorCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 		defer cancel()
 		result := (platform.ExecRunner{}).Run(doctorCtx, check)
-		fmt.Fprintf(out, "操作系统：%s\n清单：%s\n", current, manifestPath)
-		fmt.Fprintln(out, formatDiagnostic(managerDiagnostic(manager, result)))
-		fmt.Fprintln(out, "环境诊断：")
 		environmentDetector := detection.EnvironmentDetector{Runner: platform.ExecRunner{}}
 		diagnostics := environmentDetector.Diagnose(doctorCtx, current)
 		diagnostics = append(diagnostics, environmentDetector.DiagnoseTools(doctorCtx, manifest.Packages)...)
 		applicationDetector := detection.PackageDetector{Runner: platform.ExecRunner{}, Platform: current}
 		diagnostics = append(diagnostics, environmentDetector.DiagnoseApplications(doctorCtx, manifest.Packages, applicationDetector)...)
+		diagnostics = append([]detection.Diagnostic{managerDiagnostic(manager, result)}, diagnostics...)
+		if jsonOutput {
+			formatted, formatErr := formatDiagnosticsJSON(diagnostics)
+			if formatErr != nil {
+				return formatErr
+			}
+			fmt.Fprintln(out, formatted)
+			return nil
+		}
+		fmt.Fprintln(out, "环境诊断：")
+		fmt.Fprintf(out, "操作系统：%s\n清单：%s\n", current, manifestPath)
 		for _, diagnostic := range diagnostics {
 			fmt.Fprintln(out, formatDiagnostic(diagnostic))
 		}
@@ -283,6 +311,15 @@ func Run(ctx context.Context, args []string, out, errOut io.Writer) error {
 	default:
 		return fmt.Errorf("未知命令: %s\n%s", command, helpText())
 	}
+}
+
+func allPrerequisitesReady(items []platform.PrerequisiteItem) bool {
+	for _, item := range items {
+		if !item.OK {
+			return false
+		}
+	}
+	return true
 }
 
 func formatCommand(command ports.Command) string {
